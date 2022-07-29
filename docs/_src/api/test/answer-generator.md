@@ -2,8 +2,9 @@
 title: Answer Generator API
 excerpt: Generates Answers that can be answered by a Document.
 category: 62e39c4116191d0080efcb3d
+slug: answer_generator
 ---
-
+xxx
 <a id="base"></a>
 
 # Module base
