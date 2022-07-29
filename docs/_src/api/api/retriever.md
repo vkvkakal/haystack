@@ -1,3 +1,10 @@
+---
+title: 18
+excerpt: 18
+category: 62e39c4116191d0080efcb3d
+slug: 18
+---
+
 <a id="base"></a>
 
 # Module base

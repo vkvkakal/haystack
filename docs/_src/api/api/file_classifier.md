@@ -1,3 +1,10 @@
+---
+title: 6
+excerpt: 6
+category: 62e39c4116191d0080efcb3d
+slug: 6
+---
+
 <a id="file_type"></a>
 
 # Module file\_type

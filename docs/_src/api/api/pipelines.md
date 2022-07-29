@@ -1,3 +1,10 @@
+---
+title: 10
+excerpt: 10
+category: 62e39c4116191d0080efcb3d
+slug: 10
+---
+
 <a id="base"></a>
 
 # Module base
