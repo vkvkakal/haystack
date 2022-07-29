@@ -12,10 +12,13 @@ processors:
   - type: smart
   - type: crossref
 renderer:
-  type: markdown
-  descriptive_class_title: false
-  descriptive_module_title: true
-  add_method_class_prefix: true
-  add_member_class_prefix: false
-  filename: generator.md
-
+  type: renderers.ReadmeRenderer
+  excerpt: Generates Answers that can be answered by a Document.
+  category: 62e39c4116191d0080efcb3d
+  title: Answer Generator API
+  markdown:
+    descriptive_class_title: false
+    descriptive_module_title: true
+    add_method_class_prefix: true
+    add_member_class_prefix: false
+    filename: answer-generator.md
