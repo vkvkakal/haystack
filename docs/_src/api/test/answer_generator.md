@@ -5,7 +5,7 @@ category: 62e8ef01d9f80405c9a0febb
 slug: answer_generator_reference_api
 hidden: false
 ---
-abbsyncv2
+abbsyncv0
 <a id="base"></a>
 
 # Module base
