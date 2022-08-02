@@ -4,7 +4,7 @@ excerpt: Generates Answers that can be answered by a Document.
 category: 62e8ef01d9f80405c9a0febb
 slug: answer_generator
 ---
-a
+ab
 <a id="base"></a>
 
 # Module base
