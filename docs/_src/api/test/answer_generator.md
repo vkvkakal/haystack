@@ -1,7 +1,7 @@
 ---
 title: Answer Generator API
 excerpt: Generates Answers that can be answered by a Document.
-category: 62e39c4116191d0080efcb3d
+category: 62e8ef01d9f80405c9a0febb
 slug: answer_generator
 ---
 a
