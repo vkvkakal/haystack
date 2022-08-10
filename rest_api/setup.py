@@ -36,7 +36,7 @@ setup(
         # The link below cannot be translated properly into setup.cfg
         # because it looks into the parent folder.
         # TODO check if this is still a limitation later on
-        f"farm-haystack @ file://localhost/{Path(__file__).parent.parent}#egg=farm-haystack",
+        "farm-haystack",
         "fastapi<1",
         "uvicorn<1",
         "gunicorn<21",
