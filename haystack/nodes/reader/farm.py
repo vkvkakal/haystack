@@ -48,7 +48,7 @@ class FARMReader(BaseReader):
         model_name_or_path: str,
         model_version: Optional[str] = None,
         context_window_size: int = 150,
-        batch_size: int = 50,
+        batch_size: int = 48,
         use_gpu: bool = True,
         devices: List[torch.device] = [],
         no_ans_boost: float = 0.0,
