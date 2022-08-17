@@ -453,6 +453,7 @@ class QuestionAnsweringHead(PredictionHead):
 
         # disqualify answers where answer span is greater than max_answer_length
         # (set the upper triangular matrix to low value, excluding diagonal)
+        print(f"max_answer_length: {max_answer_length}")
         indices_long_span = torch.triu_indices(
             max_seq_len, max_seq_len, offset=max_answer_length, device=start_end_matrix.device
         )
