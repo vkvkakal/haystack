@@ -326,6 +326,7 @@ class Inferencer:
         aggregate_preds = False
         if len(self.model.prediction_heads) > 0:
             aggregate_preds = hasattr(self.model.prediction_heads[0], "aggregate_preds")
+        print(f"aggregate_preds: {aggregate_preds}")
 
         if self.process_pool is None:  # multiprocessing disabled (helpful for debugging or using in web frameworks)
             predictions: Any = self._inference_without_multiprocessing(dicts, return_json, aggregate_preds)
