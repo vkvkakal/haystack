@@ -464,7 +464,6 @@ class Pipeline:
                       about their execution. By default, this information includes the input parameters
                       the Nodes received and the output they generated. You can then find all debug information in the dictionary returned by this method under the key `_debug`.
         """
-        print("Seb Test in pipe.run")
         # validate the node names
         self._validate_node_names_in_params(params=params)
 

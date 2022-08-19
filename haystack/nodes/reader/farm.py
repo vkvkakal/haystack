@@ -87,18 +87,18 @@ class FARMReader(BaseReader):
         If a negative number, there is a lower chance of "no_answer" being predicted.
         If a positive number, there is an increased chance of "no_answer"
         :param return_no_answer: Whether to include no_answer predictions in the results.
-        :param top_k: The maximum number of answers to return
-        :param top_k_per_candidate: How many answers to extract for each candidate doc that is coming from the retriever (might be a long text).
-        Note that this is not the number of "final answers" you will receive
-        (see `top_k` in FARMReader.predict() or Finder.get_answers() for that)
-        and that FARM includes no_answer in the sorted list of predictions.
+        :param top_k: The maximum number of answers to return.
+        :param top_k_per_candidate: How many answers to extract for each candidate Document that is coming from the retriever (might be a long text).
+            Note that this is not the number of "final answers" you will receive
+            (see `top_k` in FARMReader.predict() or Finder.get_answers() for that)
+            and that FARM includes no_answer in the sorted list of predictions.
         :param top_k_per_sample: How many answers to extract from each small text passage that the model can process at once
-        (one "candidate doc" is usually split into many smaller "passages").
-        You usually want a very small value here, as it slows down inference
-        and you don't gain much of quality by having multiple answers from one passage.
-        Note that this is not the number of "final answers" you will receive
-        (see `top_k` in FARMReader.predict() or Finder.get_answers() for that)
-        and that FARM includes no_answer in the sorted list of predictions.
+            (one "candidate Document" is usually split into many smaller "passages").
+            You usually want a very small value here, as it slows down inference
+            and you don't gain much of quality by having multiple answers from one passage.
+            Note that this is not the number of "final answers" you will receive
+            (see `top_k` in FARMReader.predict() or Finder.get_answers() for that)
+            and that FARM includes no_answer in the sorted list of predictions.
         :param num_processes: The number of processes for `multiprocessing.Pool`. Set to value of 0 to disable
                               multiprocessing. Set to None to let Inferencer determine optimum number. If you
                               want to debug the Language Model, you might need to disable multiprocessing!
