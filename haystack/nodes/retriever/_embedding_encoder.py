@@ -358,9 +358,10 @@ class _ColbertEmbeddingEncoder(_BaseEmbeddingEncoder):
 
     def embed_documents(self, docs: List[Document]) -> List[np.ndarray]:
         texts = [d.content for d in docs]
-        embs_, doclens_ = self.embedding_model.docFromText(texts, bsize=self.batch_size,
-                                                              keep_dims='flatten', showprogress=True)
-        return embs_, doclens_ # type: ignore
+        embs_, doclens_ = self.embedding_model.docFromText(
+            texts, bsize=self.batch_size, keep_dims="flatten", showprogress=True
+        )
+        return embs_, doclens_  # type: ignore
 
     def train(
         self,

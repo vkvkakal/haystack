@@ -1,55 +1,55 @@
 # %% [markdown]
 # # Better Retrieval via "Embedding Retrieval"
-# 
+#
 # [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/deepset-ai/haystack/blob/main/tutorials/Tutorial6_Better_Retrieval_via_Embedding_Retrieval.ipynb)
-# 
+#
 # ### Importance of Retrievers
-# 
+#
 # The Retriever has a huge impact on the performance of our overall search pipeline.
-# 
-# 
+#
+#
 # ### Different types of Retrievers
 # #### Sparse
 # Family of algorithms based on counting the occurrences of words (bag-of-words) resulting in very sparse vectors with length = vocab size.
-# 
+#
 # **Examples**: BM25, TF-IDF
-# 
+#
 # **Pros**: Simple, fast, well explainable
-# 
+#
 # **Cons**: Relies on exact keyword matches between query and text
-#  
-# 
+#
+#
 # #### Dense
 # These retrievers use neural network models to create "dense" embedding vectors. Within this family, there are two different approaches:
-# 
+#
 # a) Single encoder: Use a **single model** to embed both the query and the passage.
 # b) Dual-encoder: Use **two models**, one to embed the query and one to embed the passage.
-# 
+#
 # **Examples**: REALM, DPR, Sentence-Transformers
-# 
+#
 # **Pros**: Captures semantic similarity instead of "word matches" (for example, synonyms, related topics).
-# 
+#
 # **Cons**: Computationally more heavy to use, initial training of the model (though this is less of an issue nowadays as many pre-trained models are available and most of the time, it's not needed to train the model).
-# 
-# 
+#
+#
 # ### Embedding Retrieval
-# 
+#
 # In this Tutorial, we use an `EmbeddingRetriever` with [Sentence Transformers](https://www.sbert.net/index.html) models.
-# 
+#
 # These models are trained to embed similar sentences close to each other in a shared embedding space.
-# 
+#
 # Some models have been fine-tuned on massive Information Retrieval data and can be used to retrieve documents based on a short query (for example, `multi-qa-mpnet-base-dot-v1`). There are others that are more suited to semantic similarity tasks where you are trying to find the most similar documents to a given document (for example, `all-mpnet-base-v2`). There are even models that are multilingual (for example, `paraphrase-multilingual-mpnet-base-v2`). For a good overview of different models with their evaluation metrics, see the [Pretrained Models](https://www.sbert.net/docs/pretrained_models.html#) in the Sentence Transformers documentation.
-# 
+#
 # *Use this* [link](https://colab.research.google.com/github/deepset-ai/haystack/blob/main/tutorials/Tutorial6_Better_Retrieval_via_Embedding_Retrieval.ipynb) *to open the notebook in Google Colab.*
-# 
+#
 
 # %% [markdown]
 # ### Prepare the Environment
-# 
+#
 # #### Colab: Enable the GPU Runtime
 # Make sure you enable the GPU runtime to experience decent speed in this tutorial.
 # **Runtime -> Change Runtime type -> Hardware accelerator -> GPU**
-# 
+#
 # <img src="https://raw.githubusercontent.com/deepset-ai/haystack/main/docs/img/colab_gpu_runtime.jpg">
 
 # %%
@@ -66,7 +66,7 @@
 
 # %% [markdown]
 # ## Logging
-# 
+#
 # We configure how logging messages should be displayed and which log level should be used before importing Haystack.
 # Example log message:
 # INFO - haystack.utils.preprocessing -  Converting data/tutorial1/218_Olenna_Tyrell.txt
@@ -84,9 +84,9 @@ from haystack.nodes import FARMReader, TransformersReader
 
 # %% [markdown]
 # ### Document Store
-# 
+#
 # #### Option 1: FAISS
-# 
+#
 # FAISS is a library for efficient similarity search on a cluster of dense vectors.
 # The `FAISSDocumentStore` uses a SQL(SQLite in-memory be default) database under-the-hood
 # to store the document text and other meta data. The vector embeddings of the text are
@@ -102,7 +102,7 @@ document_store = PlaidDocumentStore(faiss_index_factory_str="Flat")
 
 # %% [markdown]
 # #### Option 2: Milvus
-# 
+#
 # Milvus is an open source database library that is also optimized for vector similarity searches like FAISS.
 # Like FAISS it has both a "Flat" and "HNSW" mode but it outperforms FAISS when it comes to dynamic data management.
 # It does require a little more setup, however, as it is run through Docker and requires the setup of some config files.
@@ -123,7 +123,7 @@ document_store = PlaidDocumentStore(faiss_index_factory_str="Flat")
 
 # %% [markdown]
 # ### Cleaning & indexing documents
-# 
+#
 # Similarly to the previous tutorials, we download, convert and index some Game of Thrones articles to our DocumentStore
 
 # %%
@@ -140,13 +140,13 @@ document_store.write_documents(docs)
 
 # %% [markdown]
 # ### Initialize Retriever, Reader & Pipeline
-# 
+#
 # #### Retriever
-# 
+#
 # **Here:** We use an `EmbeddingRetriever`.
-# 
+#
 # **Alternatives:**
-# 
+#
 # - `BM25Retriever` with custom queries (for example, boosting) and filters
 # - `DensePassageRetriever` which uses two encoder models, one to embed the query and one to embed the passage, and then compares the embedding for retrieval
 # - `TfidfRetriever` in combination with a SQL or InMemory Document store for simple prototyping and debugging
@@ -168,13 +168,13 @@ document_store.update_embeddings(retriever)
 
 # %% [markdown]
 # #### Reader
-# 
+#
 # Similar to previous Tutorials we now initalize our reader.
-# 
+#
 # Here we use a FARMReader with the *deepset/roberta-base-squad2* model (see: https://huggingface.co/deepset/roberta-base-squad2)
-# 
-# 
-# 
+#
+#
+#
 # ##### FARMReader
 
 # %%
@@ -185,7 +185,7 @@ reader = FARMReader(model_name_or_path="deepset/roberta-base-squad2", use_gpu=Tr
 
 # %% [markdown]
 # ### Pipeline
-# 
+#
 # With a Haystack `Pipeline` you can stick together your building blocks to a search pipeline.
 # Under the hood, `Pipelines` are Directed Acyclic Graphs (DAGs) that you can easily customize for your own use cases.
 # To speed things up, Haystack also comes with a few predefined Pipelines. One of them is the `ExtractiveQAPipeline` that combines a retriever and a reader to answer our questions.
@@ -211,21 +211,19 @@ print_answers(prediction, details="minimum")
 
 # %% [markdown]
 # ## About us
-# 
+#
 # This [Haystack](https://github.com/deepset-ai/haystack/) notebook was made with love by [deepset](https://deepset.ai/) in Berlin, Germany
-# 
+#
 # We bring NLP to the industry via open source!
-#   
-# Our focus: Industry specific language models & large scale QA systems.  
-#   
-# Some of our other work: 
+#
+# Our focus: Industry specific language models & large scale QA systems.
+#
+# Some of our other work:
 # - [German BERT](https://deepset.ai/german-bert)
 # - [GermanQuAD and GermanDPR](https://deepset.ai/germanquad)
 # - [FARM](https://github.com/deepset-ai/FARM)
-# 
+#
 # Get in touch:
 # [Twitter](https://twitter.com/deepset_ai) | [LinkedIn](https://www.linkedin.com/company/deepset-ai/) | [Slack](https://haystack.deepset.ai/community/join) | [GitHub Discussions](https://github.com/deepset-ai/haystack/discussions) | [Website](https://deepset.ai)
-# 
+#
 # By the way: [we're hiring!](https://www.deepset.ai/jobs)
-
-

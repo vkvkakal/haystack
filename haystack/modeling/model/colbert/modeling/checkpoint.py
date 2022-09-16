@@ -10,9 +10,9 @@ from haystack.modeling.model.colbert.modeling.colbert import ColBERT
 
 class Checkpoint(ColBERT):
     """
-        Easy inference with ColBERT.
+    Easy inference with ColBERT.
 
-        TODO: Add .cast() accepting [also] an object instance-of(Checkpoint) as first argument.
+    TODO: Add .cast() accepting [also] an object instance-of(Checkpoint) as first argument.
     """
 
     def __init__(self, name, colbert_config=None):
@@ -50,7 +50,7 @@ class Checkpoint(ColBERT):
         return self.query(input_ids, attention_mask)
 
     def docFromText(self, docs, bsize=None, keep_dims=True, to_cpu=False, showprogress=False, return_tokens=False):
-        assert keep_dims in [True, False, 'flatten']
+        assert keep_dims in [True, False, "flatten"]
 
         if bsize:
             text_batches, reverse_indices = self.doc_tokenizer.tensorize(docs, bsize=bsize)
@@ -61,15 +61,17 @@ class Checkpoint(ColBERT):
                 returned_text = [returned_text[idx] for idx in reverse_indices.tolist()]
                 returned_text = [returned_text]
 
-            keep_dims_ = 'return_mask' if keep_dims == 'flatten' else keep_dims
-            batches = [self.doc(input_ids, attention_mask, keep_dims=keep_dims_, to_cpu=to_cpu)
-                       for input_ids, attention_mask in tqdm(text_batches, disable=not showprogress)]
+            keep_dims_ = "return_mask" if keep_dims == "flatten" else keep_dims
+            batches = [
+                self.doc(input_ids, attention_mask, keep_dims=keep_dims_, to_cpu=to_cpu)
+                for input_ids, attention_mask in tqdm(text_batches, disable=not showprogress)
+            ]
 
             if keep_dims is True:
                 D = _stack_3D_tensors(batches)
                 return (D[reverse_indices], *returned_text)
 
-            elif keep_dims == 'flatten':
+            elif keep_dims == "flatten":
                 D, mask = [], []
 
                 for D_, mask_ in batches:
@@ -109,7 +111,7 @@ class Checkpoint(ColBERT):
             mask = torch.arange(D.size(1), device=self.device) + 1
             mask = mask.unsqueeze(0) <= lengths.to(self.device).unsqueeze(-1)
 
-        scores = (D @ Q)
+        scores = D @ Q
         scores = scores if mask is None else scores * mask.unsqueeze(-1)
         scores = scores.max(1)
 
@@ -126,7 +128,7 @@ def _stack_3D_tensors(groups):
     offset = 0
     for x in groups:
         endpos = offset + x.size(0)
-        output[offset:endpos, :x.size(1)] = x
+        output[offset:endpos, : x.size(1)] = x
         offset = endpos
 
     return output

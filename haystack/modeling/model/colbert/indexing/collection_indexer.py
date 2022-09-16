@@ -4,6 +4,7 @@ import time
 import ujson
 import torch
 import random
+
 try:
     import faiss
 except ImportError as e:
@@ -33,7 +34,7 @@ def encode(config, collection, shared_lists, shared_queues):
     encoder.run(shared_lists)
 
 
-class CollectionIndexer():
+class CollectionIndexer:
     def __init__(self, config: ColBERTConfig, collection):
         self.config = config
         self.rank, self.nranks = self.config.rank, self.config.nranks
@@ -51,26 +52,26 @@ class CollectionIndexer():
         self.encoder = CollectionEncoder(config, self.checkpoint)
         self.saver = IndexSaver(config)
 
-        print_memory_stats(f'RANK:{self.rank}')
+        print_memory_stats(f"RANK:{self.rank}")
 
     def run(self, shared_lists):
         with torch.inference_mode():
             self.setup()
             distributed.barrier(self.rank)
-            print_memory_stats(f'RANK:{self.rank}')
+            print_memory_stats(f"RANK:{self.rank}")
 
             if not self.config.resume or not self.saver.try_load_codec():
                 self.train(shared_lists)
             distributed.barrier(self.rank)
-            print_memory_stats(f'RANK:{self.rank}')
+            print_memory_stats(f"RANK:{self.rank}")
 
             self.index()
             distributed.barrier(self.rank)
-            print_memory_stats(f'RANK:{self.rank}')
+            print_memory_stats(f"RANK:{self.rank}")
 
             self.finalize()
             distributed.barrier(self.rank)
-            print_memory_stats(f'RANK:{self.rank}')
+            print_memory_stats(f"RANK:{self.rank}")
 
     def setup(self):
         if self.config.resume:
@@ -92,8 +93,8 @@ class CollectionIndexer():
         self.num_embeddings_est = num_passages * avg_doclen_est
         self.num_partitions = int(2 ** np.floor(np.log2(16 * np.sqrt(self.num_embeddings_est))))
 
-        Run().print_main(f'Creaing {self.num_partitions:,} partitions.')
-        Run().print_main(f'*Estimated* {int(self.num_embeddings_est):,} embeddings.')
+        Run().print_main(f"Creaing {self.num_partitions:,} partitions.")
+        Run().print_main(f"*Estimated* {int(self.num_embeddings_est):,} embeddings.")
 
         self._save_plan()
 
@@ -153,32 +154,34 @@ class CollectionIndexer():
         avg_doclen_est = avg_doclen_est.item() / nonzero_ranks.item()
         self.avg_doclen_est = avg_doclen_est
 
-        Run().print(f'avg_doclen_est = {avg_doclen_est} \t len(local_sample) = {len(local_sample):,}')
+        Run().print(f"avg_doclen_est = {avg_doclen_est} \t len(local_sample) = {len(local_sample):,}")
 
-        torch.save(local_sample_embs.half(), os.path.join(self.config.index_path_, f'sample.{self.rank}.pt'))
+        torch.save(local_sample_embs.half(), os.path.join(self.config.index_path_, f"sample.{self.rank}.pt"))
 
         return avg_doclen_est
 
     def _try_load_plan(self):
         config = self.config
-        self.plan_path = os.path.join(config.index_path_, 'plan.json')
+        self.plan_path = os.path.join(config.index_path_, "plan.json")
         if os.path.exists(self.plan_path):
-            with open(self.plan_path, 'r') as f:
+            with open(self.plan_path, "r") as f:
                 try:
                     plan = ujson.load(f)
                 except Exception as e:
                     return False
-                if not ('num_chunks' in plan and
-                        'num_partitions' in plan and
-                        'num_embeddings_est' in plan and
-                        'avg_doclen_est' in plan):
+                if not (
+                    "num_chunks" in plan
+                    and "num_partitions" in plan
+                    and "num_embeddings_est" in plan
+                    and "avg_doclen_est" in plan
+                ):
                     return False
 
                 # TODO: Verify config matches
-                self.num_chunks = plan['num_chunks']
-                self.num_partitions = plan['num_partitions']
-                self.num_embeddings_est = plan['num_embeddings_est']
-                self.avg_doclen_est = plan['avg_doclen_est']
+                self.num_chunks = plan["num_chunks"]
+                self.num_partitions = plan["num_partitions"]
+                self.num_embeddings_est = plan["num_embeddings_est"]
+                self.avg_doclen_est = plan["avg_doclen_est"]
 
             return True
         else:
@@ -187,18 +190,17 @@ class CollectionIndexer():
     def _save_plan(self):
         if self.rank < 1:
             config = self.config
-            self.plan_path = os.path.join(config.index_path_, 'plan.json')
+            self.plan_path = os.path.join(config.index_path_, "plan.json")
             Run().print("#> Saving the indexing plan to", self.plan_path, "..")
 
-            with open(self.plan_path, 'w') as f:
-                d = {'config': config.export()}
-                d['num_chunks'] = self.num_chunks
-                d['num_partitions'] = self.num_partitions
-                d['num_embeddings_est'] = self.num_embeddings_est
-                d['avg_doclen_est'] = self.avg_doclen_est
+            with open(self.plan_path, "w") as f:
+                d = {"config": config.export()}
+                d["num_chunks"] = self.num_chunks
+                d["num_partitions"] = self.num_partitions
+                d["num_embeddings_est"] = self.num_embeddings_est
+                d["avg_doclen_est"] = self.avg_doclen_est
 
-                f.write(ujson.dumps(d, indent=4) + '\n')
-
+                f.write(ujson.dumps(d, indent=4) + "\n")
 
     def train(self, shared_lists):
         if self.rank > 0:
@@ -208,26 +210,31 @@ class CollectionIndexer():
 
         centroids = self._train_kmeans(sample, shared_lists)
 
-        print_memory_stats(f'RANK:{self.rank}')
+        print_memory_stats(f"RANK:{self.rank}")
         del sample
 
         bucket_cutoffs, bucket_weights, avg_residual = self._compute_avg_residual(centroids, heldout)
 
-        print_message(f'avg_residual = {avg_residual}')
+        print_message(f"avg_residual = {avg_residual}")
 
-        codec = ResidualCodec(config=self.config, centroids=centroids, avg_residual=avg_residual,
-                              bucket_cutoffs=bucket_cutoffs, bucket_weights=bucket_weights)
+        codec = ResidualCodec(
+            config=self.config,
+            centroids=centroids,
+            avg_residual=avg_residual,
+            bucket_cutoffs=bucket_cutoffs,
+            bucket_weights=bucket_weights,
+        )
         self.saver.save_codec(codec)
 
     def _concatenate_and_split_sample(self):
-        print_memory_stats(f'***1*** \t RANK:{self.rank}')
+        print_memory_stats(f"***1*** \t RANK:{self.rank}")
 
         # TODO: Allocate a float16 array. Load the samples from disk, copy to array.
         sample = torch.empty(self.num_sample_embs, self.config.dim, dtype=torch.float16)
 
         offset = 0
         for r in range(self.nranks):
-            sub_sample_path = os.path.join(self.config.index_path_, f'sample.{r}.pt')
+            sub_sample_path = os.path.join(self.config.index_path_, f"sample.{r}.pt")
             sub_sample = torch.load(sub_sample_path)
             os.remove(sub_sample_path)
 
@@ -237,18 +244,18 @@ class CollectionIndexer():
 
         assert endpos == sample.size(0), (endpos, sample.size())
 
-        print_memory_stats(f'***2*** \t RANK:{self.rank}')
+        print_memory_stats(f"***2*** \t RANK:{self.rank}")
 
         # Shuffle and split out a 5% "heldout" sub-sample [up to 50k elements]
         sample = sample[torch.randperm(sample.size(0))]
 
-        print_memory_stats(f'***3*** \t RANK:{self.rank}')
+        print_memory_stats(f"***3*** \t RANK:{self.rank}")
 
         heldout_fraction = 0.05
         heldout_size = int(min(heldout_fraction * sample.size(0), 50_000))
         sample, sample_heldout = sample.split([sample.size(0) - heldout_size, heldout_size], dim=0)
 
-        print_memory_stats(f'***4*** \t RANK:{self.rank}')
+        print_memory_stats(f"***4*** \t RANK:{self.rank}")
 
         return sample, sample_heldout
 
@@ -289,8 +296,10 @@ class CollectionIndexer():
     def _compute_avg_residual(self, centroids, heldout):
         compressor = ResidualCodec(config=self.config, centroids=centroids, avg_residual=None)
 
-        heldout_reconstruct = compressor.compress_into_codes(heldout, out_device='cuda' if self.use_gpu else 'cpu')
-        heldout_reconstruct = compressor.lookup_centroids(heldout_reconstruct, out_device='cuda' if self.use_gpu else 'cpu')
+        heldout_reconstruct = compressor.compress_into_codes(heldout, out_device="cuda" if self.use_gpu else "cpu")
+        heldout_reconstruct = compressor.lookup_centroids(
+            heldout_reconstruct, out_device="cuda" if self.use_gpu else "cpu"
+        )
         if self.use_gpu:
             heldout_avg_residual = heldout.cuda() - heldout_reconstruct
         else:
@@ -299,7 +308,7 @@ class CollectionIndexer():
         avg_residual = torch.abs(heldout_avg_residual).mean(dim=0).cpu()
         print([round(x, 3) for x in avg_residual.squeeze().tolist()])
 
-        num_options = 2 ** self.config.nbits
+        num_options = 2**self.config.nbits
         quantiles = torch.arange(0, num_options, device=heldout_avg_residual.device) * (1 / num_options)
         bucket_cutoffs_quantiles, bucket_weights_quantiles = quantiles[1:], quantiles + (0.5 / num_options)
 
@@ -307,7 +316,8 @@ class CollectionIndexer():
         bucket_weights = heldout_avg_residual.float().quantile(bucket_weights_quantiles)
 
         print_message(
-            f"#> Got bucket_cutoffs_quantiles = {bucket_cutoffs_quantiles} and bucket_weights_quantiles = {bucket_weights_quantiles}")
+            f"#> Got bucket_cutoffs_quantiles = {bucket_cutoffs_quantiles} and bucket_weights_quantiles = {bucket_weights_quantiles}"
+        )
         print_message(f"#> Got bucket_cutoffs = {bucket_cutoffs} and bucket_weights = {bucket_weights}")
 
         return bucket_cutoffs, bucket_weights, avg_residual.mean()
@@ -331,8 +341,10 @@ class CollectionIndexer():
                     assert embs.dtype == torch.float32
                     embs = embs.half()
 
-                Run().print_main(f"#> Saving chunk {chunk_idx}: \t {len(passages):,} passages "
-                                 f"and {embs.size(0):,} embeddings. From #{offset:,} onward.")
+                Run().print_main(
+                    f"#> Saving chunk {chunk_idx}: \t {len(passages):,} passages "
+                    f"and {embs.size(0):,} embeddings. From #{offset:,} onward."
+                )
 
                 self.saver.save_chunk(chunk_idx, offset, embs, doclens)
                 del embs, doclens
@@ -354,7 +366,7 @@ class CollectionIndexer():
             if not self.saver.check_chunk_exists(chunk_idx):
                 success = False
                 Run().print_main(f"#> ERROR: Could not find chunk {chunk_idx}!")
-                #TODO: Fail here?
+                # TODO: Fail here?
         if success:
             Run().print_main("Found all files!")
 
@@ -365,21 +377,21 @@ class CollectionIndexer():
         self.embedding_offsets = []
 
         for chunk_idx in range(self.num_chunks):
-            metadata_path = os.path.join(self.config.index_path_, f'{chunk_idx}.metadata.json')
+            metadata_path = os.path.join(self.config.index_path_, f"{chunk_idx}.metadata.json")
 
             with open(metadata_path) as f:
                 chunk_metadata = ujson.load(f)
 
-                chunk_metadata['embedding_offset'] = embedding_offset
+                chunk_metadata["embedding_offset"] = embedding_offset
                 self.embedding_offsets.append(embedding_offset)
 
-                assert chunk_metadata['passage_offset'] == passage_offset, (chunk_idx, passage_offset, chunk_metadata)
+                assert chunk_metadata["passage_offset"] == passage_offset, (chunk_idx, passage_offset, chunk_metadata)
 
-                passage_offset += chunk_metadata['num_passages']
-                embedding_offset += chunk_metadata['num_embeddings']
+                passage_offset += chunk_metadata["num_passages"]
+                embedding_offset += chunk_metadata["num_embeddings"]
 
-            with open(metadata_path, 'w') as f:
-                f.write(ujson.dumps(chunk_metadata, indent=4) + '\n')
+            with open(metadata_path, "w") as f:
+                f.write(ujson.dumps(chunk_metadata, indent=4) + "\n")
 
         self.num_embeddings = embedding_offset
         assert len(self.embedding_offsets) == self.num_chunks
@@ -393,8 +405,8 @@ class CollectionIndexer():
 
         Run().print_main("#> Building IVF...")
 
-        codes = torch.empty(self.num_embeddings,)
-        print_memory_stats(f'RANK:{self.rank}')
+        codes = torch.empty(self.num_embeddings)
+        print_memory_stats(f"RANK:{self.rank}")
 
         Run().print_main("#> Loading codes...")
 
@@ -402,19 +414,18 @@ class CollectionIndexer():
             offset = self.embedding_offsets[chunk_idx]
             chunk_codes = ResidualCodec.Embeddings.load_codes(self.config.index_path_, chunk_idx)
 
-            codes[offset:offset+chunk_codes.size(0)] = chunk_codes
+            codes[offset : offset + chunk_codes.size(0)] = chunk_codes
 
-        assert offset+chunk_codes.size(0) == codes.size(0), (offset, chunk_codes.size(0), codes.size())
-
+        assert offset + chunk_codes.size(0) == codes.size(0), (offset, chunk_codes.size(0), codes.size())
 
         Run().print_main(f"Sorting codes...")
 
-        print_memory_stats(f'RANK:{self.rank}')
+        print_memory_stats(f"RANK:{self.rank}")
 
         codes = codes.sort()
         ivf, values = codes.indices, codes.values
 
-        print_memory_stats(f'RANK:{self.rank}')
+        print_memory_stats(f"RANK:{self.rank}")
 
         Run().print_main(f"Getting unique codes...")
 
@@ -423,23 +434,23 @@ class CollectionIndexer():
         # All partitions should be non-empty. (We can use torch.histc otherwise.)
         assert partitions.size(0) == self.num_partitions, (partitions.size(), self.num_partitions)
 
-        print_memory_stats(f'RANK:{self.rank}')
+        print_memory_stats(f"RANK:{self.rank}")
 
         _, _ = optimize_ivf(ivf, ivf_lengths, self.config.index_path_)
 
     def _update_metadata(self):
         config = self.config
-        self.metadata_path = os.path.join(config.index_path_, 'metadata.json')
+        self.metadata_path = os.path.join(config.index_path_, "metadata.json")
         Run().print("#> Saving the indexing metadata to", self.metadata_path, "..")
 
-        with open(self.metadata_path, 'w') as f:
-            d = {'config': config.export()}
-            d['num_chunks'] = self.num_chunks
-            d['num_partitions'] = self.num_partitions
-            d['num_embeddings'] = self.num_embeddings
-            d['avg_doclen'] = self.num_embeddings / len(self.collection)
+        with open(self.metadata_path, "w") as f:
+            d = {"config": config.export()}
+            d["num_chunks"] = self.num_chunks
+            d["num_partitions"] = self.num_partitions
+            d["num_embeddings"] = self.num_embeddings
+            d["avg_doclen"] = self.num_embeddings / len(self.collection)
 
-            f.write(ujson.dumps(d, indent=4) + '\n')
+            f.write(ujson.dumps(d, indent=4) + "\n")
 
 
 def compute_faiss_kmeans(dim, num_partitions, kmeans_niters, shared_lists, return_value_queue=None):
@@ -453,7 +464,7 @@ def compute_faiss_kmeans(dim, num_partitions, kmeans_niters, shared_lists, retur
 
     centroids = torch.from_numpy(kmeans.centroids)
 
-    print_memory_stats(f'RANK:0*')
+    print_memory_stats(f"RANK:0*")
 
     if return_value_queue is not None:
         return_value_queue.put(centroids)

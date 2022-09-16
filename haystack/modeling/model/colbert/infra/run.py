@@ -23,7 +23,7 @@ class Run(object):
             # TODO: Save a timestamp here! And re-use it! But allow the user to override it on calling Run().context a second time.
             run_config = RunConfig()
             run_config.assign_defaults()
-            
+
             cls._instance.__append(run_config)
 
         # TODO: atexit.register(all_done)
@@ -58,18 +58,18 @@ class Run(object):
             yield
         finally:
             self.__pop()
-        
-    def open(self, path, mode='r'):
+
+    def open(self, path, mode="r"):
         path = os.path.join(self.path_, path)
 
         if not os.path.exists(self.path_):
             create_directory(self.path_)
 
-        if ('w' in mode or 'a' in mode) and not self.overwrite:
+        if ("w" in mode or "a" in mode) and not self.overwrite:
             assert not os.path.exists(path), (self.overwrite, path)
 
         return open(path, mode=mode)
-    
+
     def print(self, *args):
         print_message("[" + str(self.rank) + "]", "\t\t", *args)
 
@@ -78,14 +78,14 @@ class Run(object):
             self.print(*args)
 
 
-if __name__ == '__main__':
-    print(Run().root, '!')
+if __name__ == "__main__":
+    print(Run().root, "!")
 
     with Run().context(RunConfig(rank=0, nranks=1)):
-        with Run().context(RunConfig(experiment='newproject')):
-            print(Run().nranks, '!')
+        with Run().context(RunConfig(experiment="newproject")):
+            print(Run().nranks, "!")
 
-        print(Run().config, '!')
+        print(Run().config, "!")
         print(Run().rank)
 
 

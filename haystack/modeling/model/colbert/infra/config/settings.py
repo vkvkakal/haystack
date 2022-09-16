@@ -11,14 +11,14 @@ from .core_config import DefaultVal
 @dataclass
 class RunSettings:
     """
-        The defaults here have a special status in Run(), which initially calls assign_defaults(),
-        so these aren't soft defaults in that specific context.
+    The defaults here have a special status in Run(), which initially calls assign_defaults(),
+    so these aren't soft defaults in that specific context.
     """
 
     overwrite: bool = DefaultVal(False)
 
-    root: str = DefaultVal(os.path.join(os.getcwd(), 'experiments'))
-    experiment: str = DefaultVal('default')
+    root: str = DefaultVal(os.path.join(os.getcwd(), "experiments"))
+    experiment: str = DefaultVal("default")
 
     index_root: str = DefaultVal(None)
     name: str = DefaultVal(timestamp(daydir=True))
@@ -38,7 +38,7 @@ class RunSettings:
             value = list(range(value))
 
         if isinstance(value, str):
-            value = value.split(',')
+            value = value.split(",")
 
         value = list(map(int, value))
         value = sorted(list(set(value)))
@@ -49,34 +49,33 @@ class RunSettings:
 
     @property
     def index_root_(self):
-        return self.index_root or os.path.join(self.root, self.experiment, 'indexes/')
+        return self.index_root or os.path.join(self.root, self.experiment, "indexes/")
 
     @property
     def script_name_(self):
-        if '__file__' in dir(__main__):
+        if "__file__" in dir(__main__):
             cwd = os.path.abspath(os.getcwd())
             script_path = os.path.abspath(__main__.__file__)
             root_path = os.path.abspath(self.root)
 
             if script_path.startswith(cwd):
-                script_path = script_path[len(cwd):]
+                script_path = script_path[len(cwd) :]
 
             else:
                 try:
                     commonpath = os.path.commonpath([script_path, root_path])
-                    script_path = script_path[len(commonpath):]
+                    script_path = script_path[len(commonpath) :]
                 except:
                     pass
 
-
-            assert script_path.endswith('.py')
-            script_name = script_path.replace('/', '.').strip('.')[:-3]
+            assert script_path.endswith(".py")
+            script_name = script_path.replace("/", ".").strip(".")[:-3]
 
             assert len(script_name) > 0, (script_name, script_path, cwd)
 
             return script_name
 
-        return 'none'
+        return "none"
 
     @property
     def path_(self):
@@ -106,13 +105,13 @@ class DocSettings:
 @dataclass
 class QuerySettings:
     query_maxlen: int = DefaultVal(32)
-    attend_to_mask_tokens : bool = DefaultVal(False)
-    interaction: str = DefaultVal('colbert')
+    attend_to_mask_tokens: bool = DefaultVal(False)
+    interaction: str = DefaultVal("colbert")
 
 
 @dataclass
 class TrainingSettings:
-    similarity: str = DefaultVal('cosine')
+    similarity: str = DefaultVal("cosine")
 
     bsize: int = DefaultVal(32)
 
@@ -157,6 +156,7 @@ class IndexingSettings:
     @property
     def index_path_(self):
         return self.index_path or os.path.join(self.index_root_, self.index_name)
+
 
 @dataclass
 class SearchSettings:

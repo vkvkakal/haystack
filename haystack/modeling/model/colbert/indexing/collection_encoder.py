@@ -4,7 +4,7 @@ from haystack.modeling.model.colbert.infra.run import Run
 from haystack.modeling.model.colbert.utils.utils import print_message, batch
 
 
-class CollectionEncoder():
+class CollectionEncoder:
     def __init__(self, config, checkpoint):
         self.config = config
         self.checkpoint = checkpoint
@@ -23,8 +23,9 @@ class CollectionEncoder():
             # Storing on the GPU helps with speed of masking, etc.
             # But ideally this batching happens internally inside docFromText.
             for passages_batch in batch(passages, self.config.bsize * 80):
-                embs_, doclens_ = self.checkpoint.docFromText(passages_batch, bsize=self.config.bsize,
-                                                              keep_dims='flatten', showprogress=True)
+                embs_, doclens_ = self.checkpoint.docFromText(
+                    passages_batch, bsize=self.config.bsize, keep_dims="flatten", showprogress=True
+                )
                 embs.append(embs_)
                 doclens.extend(doclens_)
 

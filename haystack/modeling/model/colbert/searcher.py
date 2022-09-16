@@ -16,7 +16,7 @@ from haystack.modeling.model.colbert.infra.launcher import print_memory_stats
 
 import time
 
-TextQueries = Union[str, 'list[str]', 'dict[int, str]', Queries]
+TextQueries = Union[str, "list[str]", "dict[int, str]", Queries]
 
 
 class Searcher:
@@ -69,13 +69,15 @@ class Searcher:
         return self._search_all_Q(queries, Q, k, filter_fn=filter_fn)
 
     def _search_all_Q(self, queries, Q, k, filter_fn=None):
-        all_scored_pids = [list(zip(*self.dense_search(Q[query_idx:query_idx+1], k, filter_fn=filter_fn)))
-                           for query_idx in tqdm(range(Q.size(0)))]
+        all_scored_pids = [
+            list(zip(*self.dense_search(Q[query_idx : query_idx + 1], k, filter_fn=filter_fn)))
+            for query_idx in tqdm(range(Q.size(0)))
+        ]
 
         data = {qid: val for qid, val in zip(queries.keys(), all_scored_pids)}
 
         provenance = Provenance()
-        provenance.source = 'Searcher::search_all'
+        provenance.source = "Searcher::search_all"
         provenance.queries = queries.provenance()
         provenance.config = self.config.export()
         provenance.k = k
@@ -107,4 +109,4 @@ class Searcher:
 
         pids, scores = self.ranker.rank(self.config, Q, filter_fn=filter_fn)
 
-        return pids[:k], list(range(1, k+1)), scores[:k]
+        return pids[:k], list(range(1, k + 1)), scores[:k]

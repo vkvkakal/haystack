@@ -24,7 +24,7 @@ class StridedTensorCore:
 
         self.lengths = lengths.long() if torch.is_tensor(lengths) else torch.LongTensor(lengths)
 
-        self.strides = _select_strides(self.lengths, [.5, .75, .9, .95]) + [self.lengths.max().item()]
+        self.strides = _select_strides(self.lengths, [0.5, 0.75, 0.9, 0.95]) + [self.lengths.max().item()]
         self.max_stride = self.strides[-1]
 
         zero = torch.zeros(1, dtype=torch.long, device=self.lengths.device)
@@ -80,8 +80,8 @@ class StridedTensorCore:
             view = _create_view(self.tensor.cuda(), self.max_stride, self.inner_dims)[self.offsets[:-1]]
             mask = _create_mask(self.lengths.cuda(), self.max_stride, like=view, use_gpu=self.use_gpu)
         else:
-            #import pdb
-            #pdb.set_trace()
+            # import pdb
+            # pdb.set_trace()
             view = _create_view(self.tensor, self.max_stride, self.inner_dims)
             view = view[self.offsets[:-1]]
             mask = _create_mask(self.lengths, self.max_stride, like=view, use_gpu=self.use_gpu)
@@ -92,14 +92,14 @@ class StridedTensorCore:
         raise NotImplementedError()
 
 
-
 def _select_strides(lengths, quantiles):
     if lengths.size(0) < 5_000:
         return _get_quantiles(lengths, quantiles)
-    
+
     sample = torch.randint(0, lengths.size(0), size=(2_000,))
 
     return _get_quantiles(lengths[sample], quantiles)
+
 
 def _get_quantiles(lengths, quantiles):
     return torch.quantile(lengths.float(), torch.tensor(quantiles, device=lengths.device)).int().tolist()

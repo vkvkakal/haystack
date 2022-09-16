@@ -1,4 +1,3 @@
-
 # from haystack.modeling.model.colbert.infra.run import Run
 # from haystack.modeling.model.colbert.data.collection import Collection
 # import os

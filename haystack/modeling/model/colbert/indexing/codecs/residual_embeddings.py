@@ -12,7 +12,7 @@ class ResidualEmbeddings:
 
     def __init__(self, codes, residuals):
         """
-            Supply the already compressed residuals.
+        Supply the already compressed residuals.
         """
 
         # assert isinstance(residuals, bitarray), type(residuals)
@@ -21,7 +21,7 @@ class ResidualEmbeddings:
         assert residuals.dtype == torch.uint8
 
         self.codes = codes.to(torch.int32)  # (num_embeddings,) int32
-        self.residuals = residuals   # (num_embeddings, compressed_dim) uint8
+        self.residuals = residuals  # (num_embeddings, compressed_dim) uint8
 
     @classmethod
     def load_chunks(cls, index_path, chunk_idxs, num_embeddings):
@@ -60,19 +60,19 @@ class ResidualEmbeddings:
 
     @classmethod
     def load_codes(self, index_path, chunk_idx):
-        codes_path = os.path.join(index_path, f'{chunk_idx}.codes.pt')
-        return torch.load(codes_path, map_location='cpu')
+        codes_path = os.path.join(index_path, f"{chunk_idx}.codes.pt")
+        return torch.load(codes_path, map_location="cpu")
 
     @classmethod
     def load_residuals(self, index_path, chunk_idx):
-        residuals_path = os.path.join(index_path, f'{chunk_idx}.residuals.pt')  # f'{chunk_idx}.residuals.bn'
+        residuals_path = os.path.join(index_path, f"{chunk_idx}.residuals.pt")  # f'{chunk_idx}.residuals.bn'
         # return _load_bitarray(residuals_path)
 
-        return torch.load(residuals_path, map_location='cpu')
+        return torch.load(residuals_path, map_location="cpu")
 
     def save(self, path_prefix):
-        codes_path = f'{path_prefix}.codes.pt'
-        residuals_path = f'{path_prefix}.residuals.pt'  # f'{path_prefix}.residuals.bn'
+        codes_path = f"{path_prefix}.codes.pt"
+        residuals_path = f"{path_prefix}.residuals.pt"  # f'{path_prefix}.residuals.bn'
 
         torch.save(self.codes, codes_path)
         torch.save(self.residuals, residuals_path)
@@ -84,11 +84,11 @@ class ResidualEmbeddings:
 
 def get_dim_and_nbits(index_path):
     # TODO: Ideally load this using ColBERTConfig.load_from_index!
-    with open(os.path.join(index_path, 'metadata.json')) as f:
-        metadata = ujson.load(f)['config']
+    with open(os.path.join(index_path, "metadata.json")) as f:
+        metadata = ujson.load(f)["config"]
 
-    dim = metadata['dim']
-    nbits = metadata['nbits']
+    dim = metadata["dim"]
+    nbits = metadata["nbits"]
 
     assert (dim * nbits) % 8 == 0, (dim, nbits, dim * nbits)
 

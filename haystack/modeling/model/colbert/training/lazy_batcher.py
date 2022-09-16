@@ -14,7 +14,7 @@ from haystack.modeling.model.colbert.data.examples import Examples
 # from haystack.modeling.model.colbert.utils.runs import Run
 
 
-class LazyBatcher():
+class LazyBatcher:
     def __init__(self, config: ColBERTConfig, triples, queries, collection, rank=0, nranks=1):
         self.bsize, self.accumsteps = config.bsize, config.accumsteps
         self.nway = config.nway
@@ -45,7 +45,7 @@ class LazyBatcher():
 
         for position in range(offset, endpos):
             query, *pids = self.triples[position]
-            pids = pids[:self.nway]
+            pids = pids[: self.nway]
 
             query = self.queries[query]
 
@@ -59,7 +59,7 @@ class LazyBatcher():
             all_queries.append(query)
             all_passages.extend(passages)
             all_scores.extend(scores)
-        
+
         assert len(all_scores) in [0, len(all_passages)], len(all_scores)
 
         return self.collate(all_queries, all_passages, all_scores)

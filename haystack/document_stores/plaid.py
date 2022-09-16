@@ -45,12 +45,12 @@ class PlaidIndex:
                 filename = os.path.join(directory, filename)
 
                 delete = filename.endswith(".json")
-                delete = delete and ('metadata' in filename or 'doclen' in filename or 'plan' in filename)
+                delete = delete and ("metadata" in filename or "doclen" in filename or "plan" in filename)
                 delete = delete or filename.endswith(".pt")
-                
+
                 if delete:
                     deleted.append(filename)
-            
+
             for filename in deleted:
                 os.remove(filename)
 
@@ -241,17 +241,21 @@ class PlaidDocumentStore(SQLDocumentStore):
         logger.info(f"Updating embeddings for {document_count} docs...")
         vector_id = self.plaid_indexes[index].ntotal
 
-        documents = list(self._query(
-            index=index,
-            vector_ids=None,
-            batch_size=batch_size,
-            filters=filters,
-            only_documents_without_embedding=not update_existing_embeddings,
-        ))
+        documents = list(
+            self._query(
+                index=index,
+                vector_ids=None,
+                batch_size=batch_size,
+                filters=filters,
+                only_documents_without_embedding=not update_existing_embeddings,
+            )
+        )
 
         index_path = self.plaid_indexes[index].index_path
         config: ColBERTConfig = retriever.embedding_encoder.colbert_config
-        config.configure(doc_maxlen=300, nbits=2, index_name=index, resume=False, partitions=None, index_path=str(index_path))
+        config.configure(
+            doc_maxlen=300, nbits=2, index_name=index, resume=False, partitions=None, index_path=str(index_path)
+        )
 
         if not os.path.exists(index_path):
             os.makedirs(index_path)
@@ -259,7 +263,7 @@ class PlaidDocumentStore(SQLDocumentStore):
         saver = IndexSaver(config)
 
         num_passages = len(documents)
-        chunk_size = min(25_000, 1 + num_passages // 1) # min(25_000, 1 + len(self) // Run().nranks) 
+        chunk_size = min(25_000, 1 + num_passages // 1)  # min(25_000, 1 + len(self) // Run().nranks)
         num_chunks = int(np.ceil(num_passages / chunk_size))
 
         # Simple alternative: < 100k: 100%, < 1M: 15%, < 10M: 7%, < 100M: 3%, > 100M: 1%
@@ -305,26 +309,26 @@ class PlaidDocumentStore(SQLDocumentStore):
                 nonzero_ranks = torch.tensor([float(len(local_sample) > 0)]).cpu()
 
         avg_doclen_est = avg_doclen_est.item() / nonzero_ranks.item()
-        torch.save(local_sample_embs.half(), os.path.join(index_path, f'sample.pt'))
+        torch.save(local_sample_embs.half(), os.path.join(index_path, f"sample.pt"))
 
         # Select the number of partitions
         num_embeddings_est = num_passages * avg_doclen_est
         num_partitions = int(2 ** np.floor(np.log2(16 * np.sqrt(num_embeddings_est))))
 
-        plan_path = os.path.join(index_path, 'plan.json')
-        with open(plan_path, 'w') as f:
-            d = {'config': config.export()}
-            d['num_chunks'] = num_chunks
-            d['num_partitions'] = num_partitions
-            d['num_embeddings_est'] = num_embeddings_est
-            d['avg_doclen_est'] = avg_doclen_est
-            f.write(ujson.dumps(d, indent=4) + '\n')
+        plan_path = os.path.join(index_path, "plan.json")
+        with open(plan_path, "w") as f:
+            d = {"config": config.export()}
+            d["num_chunks"] = num_chunks
+            d["num_partitions"] = num_partitions
+            d["num_embeddings_est"] = num_embeddings_est
+            d["avg_doclen_est"] = avg_doclen_est
+            f.write(ujson.dumps(d, indent=4) + "\n")
 
         # TODO: Allocate a float16 array. Load the samples from disk, copy to array.
         sample = torch.empty(num_sample_embs, config.dim, dtype=torch.float16)
         offset = 0
         # for r in range(self.nranks):
-        sub_sample_path = os.path.join(index_path, f'sample.pt')
+        sub_sample_path = os.path.join(index_path, f"sample.pt")
         sub_sample = torch.load(sub_sample_path)
         os.remove(sub_sample_path)
 
@@ -357,8 +361,13 @@ class PlaidDocumentStore(SQLDocumentStore):
         del sample
 
         bucket_cutoffs, bucket_weights, avg_residual = self._compute_avg_residual(centroids, sample_heldout, config)
-        codec = ResidualCodec(config=config, centroids=centroids, avg_residual=avg_residual,
-                              bucket_cutoffs=bucket_cutoffs, bucket_weights=bucket_weights)
+        codec = ResidualCodec(
+            config=config,
+            centroids=centroids,
+            avg_residual=avg_residual,
+            bucket_cutoffs=bucket_cutoffs,
+            bucket_weights=bucket_weights,
+        )
         saver.save_codec(codec)
 
         with saver.thread():
@@ -387,21 +396,21 @@ class PlaidDocumentStore(SQLDocumentStore):
         embedding_offsets = []
 
         for chunk_idx in range(num_chunks):
-            metadata_path = os.path.join(index_path, f'{chunk_idx}.metadata.json')
+            metadata_path = os.path.join(index_path, f"{chunk_idx}.metadata.json")
 
             with open(metadata_path) as f:
                 chunk_metadata = ujson.load(f)
 
-                chunk_metadata['embedding_offset'] = embedding_offset
+                chunk_metadata["embedding_offset"] = embedding_offset
                 embedding_offsets.append(embedding_offset)
 
-                assert chunk_metadata['passage_offset'] == passage_offset, (chunk_idx, passage_offset, chunk_metadata)
+                assert chunk_metadata["passage_offset"] == passage_offset, (chunk_idx, passage_offset, chunk_metadata)
 
-                passage_offset += chunk_metadata['num_passages']
-                embedding_offset += chunk_metadata['num_embeddings']
+                passage_offset += chunk_metadata["num_passages"]
+                embedding_offset += chunk_metadata["num_embeddings"]
 
-            with open(metadata_path, 'w') as f:
-                f.write(ujson.dumps(chunk_metadata, indent=4) + '\n')
+            with open(metadata_path, "w") as f:
+                f.write(ujson.dumps(chunk_metadata, indent=4) + "\n")
 
         num_embeddings = embedding_offset
         assert len(embedding_offsets) == num_chunks
@@ -413,14 +422,14 @@ class PlaidDocumentStore(SQLDocumentStore):
             )
 
         # build ivf
-        codes = torch.empty(num_embeddings,)
+        codes = torch.empty(num_embeddings)
 
         for chunk_idx in tqdm(range(num_chunks)):
             offset = embedding_offsets[chunk_idx]
             chunk_codes = ResidualCodec.Embeddings.load_codes(index_path, chunk_idx)
-            codes[offset:offset+chunk_codes.size(0)] = chunk_codes
+            codes[offset : offset + chunk_codes.size(0)] = chunk_codes
 
-        assert offset+chunk_codes.size(0) == codes.size(0), (offset, chunk_codes.size(0), codes.size())
+        assert offset + chunk_codes.size(0) == codes.size(0), (offset, chunk_codes.size(0), codes.size())
 
         codes = codes.sort()
         ivf, values = codes.indices, codes.values
@@ -431,15 +440,15 @@ class PlaidDocumentStore(SQLDocumentStore):
 
         _, _ = optimize_ivf(ivf, ivf_lengths, index_path)
 
-        metadata_path = os.path.join(index_path, 'metadata.json')
-        with open(metadata_path, 'w') as f:
-            d = {'config': config.export()}
-            d['num_chunks'] = num_chunks
-            d['num_partitions'] = num_partitions
-            d['num_embeddings'] = num_embeddings
-            d['avg_doclen'] = num_embeddings / len(documents)
+        metadata_path = os.path.join(index_path, "metadata.json")
+        with open(metadata_path, "w") as f:
+            d = {"config": config.export()}
+            d["num_chunks"] = num_chunks
+            d["num_partitions"] = num_partitions
+            d["num_embeddings"] = num_embeddings
+            d["avg_doclen"] = num_embeddings / len(documents)
 
-            f.write(ujson.dumps(d, indent=4) + '\n')
+            f.write(ujson.dumps(d, indent=4) + "\n")
 
         vector_id_map = {}
         for doc in documents:
@@ -465,8 +474,10 @@ class PlaidDocumentStore(SQLDocumentStore):
     def _compute_avg_residual(self, centroids, heldout, config):
         compressor = ResidualCodec(config=config, centroids=centroids, avg_residual=None)
 
-        heldout_reconstruct = compressor.compress_into_codes(heldout, out_device='cuda' if self.use_gpu else 'cpu')
-        heldout_reconstruct = compressor.lookup_centroids(heldout_reconstruct, out_device='cuda' if self.use_gpu else 'cpu')
+        heldout_reconstruct = compressor.compress_into_codes(heldout, out_device="cuda" if self.use_gpu else "cpu")
+        heldout_reconstruct = compressor.lookup_centroids(
+            heldout_reconstruct, out_device="cuda" if self.use_gpu else "cpu"
+        )
         if self.use_gpu:
             heldout_avg_residual = heldout.cuda() - heldout_reconstruct
         else:
@@ -475,7 +486,7 @@ class PlaidDocumentStore(SQLDocumentStore):
         avg_residual = torch.abs(heldout_avg_residual).mean(dim=0).cpu()
         print([round(x, 3) for x in avg_residual.squeeze().tolist()])
 
-        num_options = 2 ** config.nbits
+        num_options = 2**config.nbits
         quantiles = torch.arange(0, num_options, device=heldout_avg_residual.device) * (1 / num_options)
         bucket_cutoffs_quantiles, bucket_weights_quantiles = quantiles[1:], quantiles + (0.5 / num_options)
 
@@ -616,7 +627,7 @@ class PlaidDocumentStore(SQLDocumentStore):
 
         if filters:
             logger.warning("Query filters are not implemented for the FAISSDocumentStore.")
-        
+
         index = index or self.index
         if not self.plaid_indexes.get(index):
             raise Exception(f"Index named '{index}' does not exists. Use 'update_embeddings()' to create an index.")
@@ -654,9 +665,7 @@ class PlaidDocumentStore(SQLDocumentStore):
         documents = self.get_documents_by_vector_ids(pids, index=index)
 
         # assign query score to each document
-        scores_for_vector_ids: Dict[str, float] = {
-            str(v_id): s for v_id, s in zip(pids, scores)
-        }
+        scores_for_vector_ids: Dict[str, float] = {str(v_id): s for v_id, s in zip(pids, scores)}
         for doc in documents:
             score = scores_for_vector_ids[doc.meta["vector_id"]]
             if scale_score:
@@ -664,7 +673,6 @@ class PlaidDocumentStore(SQLDocumentStore):
             doc.score = score
 
         return documents
-
 
     def delete_all_documents(
         self,
@@ -727,5 +735,5 @@ class PlaidDocumentStore(SQLDocumentStore):
         if self.return_embedding:
             for doc in documents:
                 if doc.meta and doc.meta.get("vector_id") is not None:
-                    doc.embedding = None # TODO
+                    doc.embedding = None  # TODO
         return documents

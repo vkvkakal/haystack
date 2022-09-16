@@ -9,7 +9,7 @@ from haystack.modeling.model.colbert.modeling.reranker.electra import ElectraRer
 from haystack.modeling.model.colbert.utils.utils import flatten
 
 
-DEFAULT_MODEL = 'cross-encoder/ms-marco-MiniLM-L-6-v2'
+DEFAULT_MODEL = "cross-encoder/ms-marco-MiniLM-L-6-v2"
 
 
 class Scorer:
@@ -52,15 +52,21 @@ class Scorer:
                     queries_ = [self.queries[qid] for qid in qids[offset:endpos]]
                     passages_ = [self.collection[pid] for pid in pids[offset:endpos]]
 
-                    features = tokenizer(queries_, passages_, padding='longest', truncation=True,
-                                            return_tensors='pt', max_length=self.maxlen).to(model.device)
+                    features = tokenizer(
+                        queries_,
+                        passages_,
+                        padding="longest",
+                        truncation=True,
+                        return_tensors="pt",
+                        max_length=self.maxlen,
+                    ).to(model.device)
 
                     scores.append(model(**features).logits.flatten())
 
         scores = torch.cat(scores)
         scores = scores.tolist()
 
-        Run().print(f'Returning with {len(scores)} scores')
+        Run().print(f"Returning with {len(scores)} scores")
 
         return scores
 

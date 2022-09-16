@@ -5,12 +5,11 @@ from .strided_tensor_core import _create_mask, _create_view
 
 
 class CandidateGeneration:
-
     def __init__(self, use_gpu=True):
         self.use_gpu = use_gpu
 
     def get_cells(self, Q, ncells):
-        scores = (self.codec.centroids @ Q.T)
+        scores = self.codec.centroids @ Q.T
         if ncells == 1:
             cells = scores.argmax(dim=0, keepdim=True).permute(1, 0)
         else:

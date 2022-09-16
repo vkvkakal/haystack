@@ -19,10 +19,10 @@ def load_queries(queries_path):
 
     with open(queries_path) as f:
         for line in f:
-            qid, query, *_ = line.strip().split('\t')
+            qid, query, *_ = line.strip().split("\t")
             qid = int(qid)
 
-            assert (qid not in queries), ("Query QID", qid, "is repeated!")
+            assert qid not in queries, ("Query QID", qid, "is repeated!")
             queries[qid] = query
 
     print_message("#> Got", len(queries), "queries. All QIDs are unique.\n")
@@ -37,9 +37,9 @@ def load_qrels(qrels_path):
     print_message("#> Loading qrels from", qrels_path, "...")
 
     qrels = OrderedDict()
-    with open(qrels_path, mode='r', encoding="utf-8") as f:
+    with open(qrels_path, mode="r", encoding="utf-8") as f:
         for line in f:
-            qid, x, pid, y = map(int, line.strip().split('\t'))
+            qid, x, pid, y = map(int, line.strip().split("\t"))
             assert x == 0 and y == 1
             qrels[qid] = qrels.get(qid, [])
             qrels[qid].append(pid)
@@ -50,8 +50,9 @@ def load_qrels(qrels_path):
 
     avg_positive = round(sum(len(qrels[qid]) for qid in qrels) / len(qrels), 2)
 
-    print_message("#> Loaded qrels for", len(qrels), "unique queries with",
-                  avg_positive, "positives per query on average.\n")
+    print_message(
+        "#> Loaded qrels for", len(qrels), "unique queries with", avg_positive, "positives per query on average.\n"
+    )
 
     return qrels
 
@@ -65,10 +66,10 @@ def load_topK(topK_path):
 
     with open(topK_path) as f:
         for line_idx, line in enumerate(f):
-            if line_idx and line_idx % (10*1000*1000) == 0:
-                print(line_idx, end=' ', flush=True)
+            if line_idx and line_idx % (10 * 1000 * 1000) == 0:
+                print(line_idx, end=" ", flush=True)
 
-            qid, pid, query, passage = line.split('\t')
+            qid, pid, query, passage = line.split("\t")
             qid, pid = int(qid), int(pid)
 
             assert (qid not in queries) or (queries[qid] == query)
@@ -98,10 +99,10 @@ def load_topK_pids(topK_path, qrels):
 
     with open(topK_path) as f:
         for line_idx, line in enumerate(f):
-            if line_idx and line_idx % (10*1000*1000) == 0:
-                print(line_idx, end=' ', flush=True)
+            if line_idx and line_idx % (10 * 1000 * 1000) == 0:
+                print(line_idx, end=" ", flush=True)
 
-            qid, pid, *rest = line.strip().split('\t')
+            qid, pid, *rest = line.strip().split("\t")
             qid, pid = int(qid), int(pid)
 
             topK_pids[qid].append(pid)
@@ -141,8 +142,13 @@ def load_topK_pids(topK_path, qrels):
 
         avg_positive = round(sum(len(topK_positives[qid]) for qid in topK_positives) / len(topK_pids), 2)
 
-        print_message("#> Concurrently got annotations for", len(topK_positives), "unique queries with",
-                      avg_positive, "positives per query on average.\n")
+        print_message(
+            "#> Concurrently got annotations for",
+            len(topK_positives),
+            "unique queries with",
+            avg_positive,
+            "positives per query on average.\n",
+        )
 
     assert qrels is None or topK_positives is None, "Cannot have both qrels and an annotated top-K file!"
 
@@ -159,15 +165,15 @@ def load_collection(collection_path):
 
     with open(collection_path) as f:
         for line_idx, line in enumerate(f):
-            if line_idx % (1000*1000) == 0:
-                print(f'{line_idx // 1000 // 1000}M', end=' ', flush=True)
+            if line_idx % (1000 * 1000) == 0:
+                print(f"{line_idx // 1000 // 1000}M", end=" ", flush=True)
 
-            pid, passage, *rest = line.strip('\n\r ').split('\t')
-            assert pid == 'id' or int(pid) == line_idx
+            pid, passage, *rest = line.strip("\n\r ").split("\t")
+            assert pid == "id" or int(pid) == line_idx
 
             if len(rest) >= 1:
                 title = rest[0]
-                passage = title + ' | ' + passage
+                passage = title + " | " + passage
 
             collection.append(passage)
 
@@ -182,17 +188,17 @@ def load_colbert(args, do_print=True):
     # TODO: If the parameters below were not specified on the command line, their *checkpoint* values should be used.
     # I.e., not their purely (i.e., training) default values.
 
-    for k in ['query_maxlen', 'doc_maxlen', 'dim', 'similarity', 'amp']:
-        if 'arguments' in checkpoint and hasattr(args, k):
-            if k in checkpoint['arguments'] and checkpoint['arguments'][k] != getattr(args, k):
-                a, b = checkpoint['arguments'][k], getattr(args, k)
+    for k in ["query_maxlen", "doc_maxlen", "dim", "similarity", "amp"]:
+        if "arguments" in checkpoint and hasattr(args, k):
+            if k in checkpoint["arguments"] and checkpoint["arguments"][k] != getattr(args, k):
+                a, b = checkpoint["arguments"][k], getattr(args, k)
                 Run.warn(f"Got checkpoint['arguments']['{k}'] != args.{k} (i.e., {a} != {b})")
 
-    if 'arguments' in checkpoint:
+    if "arguments" in checkpoint:
         if args.rank < 1:
-            print(ujson.dumps(checkpoint['arguments'], indent=4))
+            print(ujson.dumps(checkpoint["arguments"], indent=4))
 
     if do_print:
-        print('\n')
+        print("\n")
 
     return colbert, checkpoint

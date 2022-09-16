@@ -49,4 +49,3 @@
 #         Examples(data=self.Triples).save(new_path)
 
 #         # save_metadata(f'{output}.meta', args)  # TODO: What args to save?? {seed, positives, depth, rankings if path or else whatever provenance the rankings object shares}
-

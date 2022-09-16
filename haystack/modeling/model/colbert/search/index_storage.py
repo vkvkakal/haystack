@@ -31,41 +31,38 @@ class IndexScorer(IndexLoader, CandidateGeneration):
         if hasattr(cls, "loaded_extensions") or use_gpu:
             return
 
-        print_message(f"Loading filter_pids_cpp extension (set COLBERT_LOAD_TORCH_EXTENSION_VERBOSE=True for more info)...")
+        print_message(
+            f"Loading filter_pids_cpp extension (set COLBERT_LOAD_TORCH_EXTENSION_VERBOSE=True for more info)..."
+        )
         filter_pids_cpp = load(
             name="filter_pids_cpp",
-            sources=[
-                os.path.join(
-                    pathlib.Path(__file__).parent.resolve(), "filter_pids.cpp"
-                ),
-            ],
+            sources=[os.path.join(pathlib.Path(__file__).parent.resolve(), "filter_pids.cpp")],
             extra_cflags=["-O3"],
             verbose=os.getenv("COLBERT_LOAD_TORCH_EXTENSION_VERBOSE", "False") == "True",
         )
         cls.filter_pids = filter_pids_cpp.filter_pids_cpp
 
-        print_message(f"Loading decompress_residuals_cpp extension (set COLBERT_LOAD_TORCH_EXTENSION_VERBOSE=True for more info)...")
+        print_message(
+            f"Loading decompress_residuals_cpp extension (set COLBERT_LOAD_TORCH_EXTENSION_VERBOSE=True for more info)..."
+        )
         decompress_residuals_cpp = load(
             name="decompress_residuals_cpp",
-            sources=[
-                os.path.join(
-                    pathlib.Path(__file__).parent.resolve(), "decompress_residuals.cpp"
-                ),
-            ],
+            sources=[os.path.join(pathlib.Path(__file__).parent.resolve(), "decompress_residuals.cpp")],
             extra_cflags=["-O3"],
             verbose=os.getenv("COLBERT_LOAD_TORCH_EXTENSION_VERBOSE", "False") == "True",
         )
         cls.decompress_residuals = decompress_residuals_cpp.decompress_residuals_cpp
 
         cls.loaded_extensions = True
-    def lookup_eids(self, embedding_ids, codes=None, out_device='cuda'):
+
+    def lookup_eids(self, embedding_ids, codes=None, out_device="cuda"):
         return self.embeddings_strided.lookup_eids(embedding_ids, codes=codes, out_device=out_device)
 
-    def lookup_pids(self, passage_ids, out_device='cuda', return_mask=False):
+    def lookup_pids(self, passage_ids, out_device="cuda", return_mask=False):
         return self.embeddings_strided.lookup_pids(passage_ids, out_device)
 
     def retrieve(self, config, Q):
-        Q = Q[:, :config.query_maxlen]   # NOTE: Candidate generation uses only the query tokens
+        Q = Q[:, : config.query_maxlen]  # NOTE: Candidate generation uses only the query tokens
         embedding_ids, centroid_scores = self.generate_candidates(config, Q)
 
         return embedding_ids, centroid_scores
@@ -90,15 +87,15 @@ class IndexScorer(IndexLoader, CandidateGeneration):
 
     def score_pids(self, config, Q, pids, centroid_scores):
         """
-            Always supply a flat list or tensor for `pids`.
+        Always supply a flat list or tensor for `pids`.
 
-            Supply sizes Q = (1 | num_docs, *, dim) and D = (num_docs, *, dim).
-            If Q.size(0) is 1, the matrix will be compared with all passages.
-            Otherwise, each query matrix will be compared against the *aligned* passage.
+        Supply sizes Q = (1 | num_docs, *, dim) and D = (num_docs, *, dim).
+        If Q.size(0) is 1, the matrix will be compared with all passages.
+        Otherwise, each query matrix will be compared against the *aligned* passage.
         """
 
         # TODO: Remove batching?
-        batch_size = 2 ** 20
+        batch_size = 2**20
 
         if self.use_gpu:
             centroid_scores = centroid_scores.cuda()
@@ -110,7 +107,7 @@ class IndexScorer(IndexLoader, CandidateGeneration):
 
             # Filter docs using pruned centroid scores
             for i in range(0, ceil(len(pids) / batch_size)):
-                pids_ = pids[i * batch_size : (i+1) * batch_size]
+                pids_ = pids[i * batch_size : (i + 1) * batch_size]
                 codes_packed, codes_lengths = self.embeddings_strided.lookup_codes(pids_)
                 idx_ = idx[codes_packed.long()]
                 pruned_codes_strided = StridedTensor(idx_, codes_lengths, use_gpu=self.use_gpu)
@@ -139,27 +136,32 @@ class IndexScorer(IndexLoader, CandidateGeneration):
                 pids = pids[torch.topk(approx_scores, k=(config.ndocs // 4)).indices]
         else:
             pids = IndexScorer.filter_pids(
-                    pids, centroid_scores, self.embeddings.codes, self.doclens,
-                    self.embeddings_strided.codes_strided.offsets, idx, config.ndocs
-                )
+                pids,
+                centroid_scores,
+                self.embeddings.codes,
+                self.doclens,
+                self.embeddings_strided.codes_strided.offsets,
+                idx,
+                config.ndocs,
+            )
 
         # Rank final list of docs using full approximate embeddings (including residuals)
         if self.use_gpu:
             D_packed, D_mask = self.lookup_pids(pids)
         else:
             D_packed = IndexScorer.decompress_residuals(
-                    pids,
-                    self.doclens,
-                    self.embeddings_strided.codes_strided.offsets,
-                    self.codec.bucket_weights,
-                    self.codec.reversed_bit_map,
-                    self.codec.decompression_lookup_table,
-                    self.embeddings.residuals,
-                    self.embeddings.codes,
-                    self.codec.centroids,
-                    self.codec.dim,
-                    self.codec.nbits
-                )
+                pids,
+                self.doclens,
+                self.embeddings_strided.codes_strided.offsets,
+                self.codec.bucket_weights,
+                self.codec.reversed_bit_map,
+                self.codec.decompression_lookup_table,
+                self.embeddings.residuals,
+                self.embeddings.codes,
+                self.codec.centroids,
+                self.codec.dim,
+                self.codec.nbits,
+            )
             D_packed = torch.nn.functional.normalize(D_packed.to(torch.float32), p=2, dim=-1)
             D_mask = self.doclens[pids.long()]
 

@@ -4,7 +4,7 @@ import numpy as np
 from bitarray import bitarray
 
 
-class IndexManager():
+class IndexManager:
     def __init__(self, dim):
         self.dim = dim
 

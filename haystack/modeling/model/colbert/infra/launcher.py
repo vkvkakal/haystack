@@ -7,7 +7,7 @@ import torch.multiprocessing as mp
 import numpy as np
 
 try:
-    mp.set_start_method('spawn', force=True)
+    mp.set_start_method("spawn", force=True)
 except RuntimeError:
     pass
 
@@ -63,13 +63,13 @@ class Launcher:
 
         # print_message(f"[Post-Emptying] GPU memory check: r={r}, a={a}, f={f}")
 
-        print_memory_stats('MAIN')
+        print_memory_stats("MAIN")
 
         for proc in all_procs:
             print("#> Starting...")
             proc.start()
 
-        print_memory_stats('MAIN')
+        print_memory_stats("MAIN")
 
         # TODO: If the processes crash upon join, raise an exception and don't block on .get() below!
 
@@ -78,13 +78,13 @@ class Launcher:
 
         if not self.return_all:
             return_values = return_values[0]
-        
+
         for proc in all_procs:
             proc.join()
             print("#> Joined...")
 
-        print_memory_stats('MAIN')
-        
+        print_memory_stats("MAIN")
+
         return return_values
 
 
@@ -104,7 +104,7 @@ def setup_new_process(callee, port, return_value_queue, config, *args):
     os.environ["RANK"] = str(config.rank)
 
     # TODO: Ideally the gpus "getter" handles this max-nranks thing!
-    os.environ["CUDA_VISIBLE_DEVICES"] = ','.join(map(str, config.gpus_[:nranks]))
+    os.environ["CUDA_VISIBLE_DEVICES"] = ",".join(map(str, config.gpus_[:nranks]))
 
     nranks_, distributed_ = distributed.init(rank)
     assert nranks_ == nranks
@@ -117,7 +117,7 @@ def setup_new_process(callee, port, return_value_queue, config, *args):
     return_value_queue.put((rank, return_val))
 
 
-def print_memory_stats(message=''):
+def print_memory_stats(message=""):
     return  # FIXME: Add this back before release.
 
     import psutil  # Remove before releases? Or at least make optional with try/except.
@@ -129,7 +129,7 @@ def print_memory_stats(message=''):
     rss, vms, shared = info.rss, info.vms, info.shared
     uss = psutil.Process().memory_full_info().uss
 
-    gib = 1024 ** 3
+    gib = 1024**3
 
     summary = f"""
     "[PID: {os.getpid()}]
@@ -142,6 +142,8 @@ def print_memory_stats(message=''):
     VMS: {vms  / gib:,.1f}
     USS: {uss  / gib:,.1f}
     SHARED: {shared  / gib:,.1f}
-    """.strip().replace('\n', '\t')
+    """.strip().replace(
+        "\n", "\t"
+    )
 
     print_message(summary, pad=True)
