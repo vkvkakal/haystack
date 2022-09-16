@@ -7,7 +7,7 @@ Original file is located at
     https://colab.research.google.com/drive/1Tz9GSzre7JfvXDDKe7sCnO0FMuDViMnN
 
 # Generative Pseudo Labeling for Domain Adaptation of Dense Retrievals
-#### Note: Adapted to Haystack from Nils Riemers' original [notebook](https://colab.research.google.com/gist/jamescalam/d2c888775c87f9882bb7c379a96adbc8/gpl-domain-adaptation.ipynb#scrollTo=183ff7ab).
+#### Note: Adapted to Haystack from Nils Reimers' original [notebook](https://colab.research.google.com/gist/jamescalam/d2c888775c87f9882bb7c379a96adbc8/gpl-domain-adaptation.ipynb#scrollTo=183ff7ab).
 
 The NLP models we use every day were trained on a corpus of data that reflects the world from the past. In the meantime, we've experienced world-changing events, like the COVID pandemics, and we'd like our models to know about them. Training a model from scratch is tedious work but what if we could just update the models with new data? Generative Pseudo Labeling comes to the rescue.
 
