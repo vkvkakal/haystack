@@ -14,6 +14,8 @@ from transformers import AutoModel, AutoTokenizer
 from haystack.modeling.data_handler.dataloader import NamedDataLoader
 from haystack.modeling.data_handler.dataset import convert_features_to_dataset, flatten_rename
 from haystack.modeling.infer import Inferencer
+from haystack.modeling.model.colbert.infra.config import ColBERTConfig
+from haystack.modeling.model.colbert.modeling.checkpoint import Checkpoint
 from haystack.nodes.retriever._losses import _TRAINING_LOSSES
 from haystack.schema import Document
 
@@ -339,9 +341,49 @@ class _RetribertEmbeddingEncoder(_BaseEmbeddingEncoder):
         )
 
 
+class _ColbertEmbeddingEncoder(_BaseEmbeddingEncoder):
+    def __init__(self, retriever: "EmbeddingRetriever"):
+
+        self.progress_bar = retriever.progress_bar
+        self.batch_size = retriever.batch_size
+        self.max_length = retriever.max_seq_len
+        self.colbert_config = ColBERTConfig.load_from_checkpoint(retriever.embedding_model)
+        self.colbert_config.configure(gpus=torch.cuda.device_count())
+        self.embedding_model = Checkpoint(retriever.embedding_model, colbert_config=self.colbert_config)
+        if retriever.use_gpu:
+            self.embedding_model.cuda()
+
+    def embed_queries(self, texts: List[str]) -> List[np.ndarray]:
+        return self.embedding_model.queryFromText(texts, bsize=self.batch_size)
+
+    def embed_documents(self, docs: List[Document]) -> List[np.ndarray]:
+        texts = [d.content for d in docs]
+        embs_, doclens_ = self.embedding_model.docFromText(texts, bsize=self.batch_size,
+                                                              keep_dims='flatten', showprogress=True)
+        return embs_, doclens_ # type: ignore
+
+    def train(
+        self,
+        training_data: List[Dict[str, Any]],
+        learning_rate: float = 2e-5,
+        n_epochs: int = 1,
+        num_warmup_steps: int = None,
+        batch_size: int = 16,
+    ):
+        raise NotImplementedError(
+            "You can't train this retriever. You can only use the `train` method with sentence-transformers EmbeddingRetrievers."
+        )
+
+    def save(self, save_dir: Union[Path, str]):
+        raise NotImplementedError(
+            "You can't save your record as `save` only works for sentence-transformers EmbeddingRetrievers."
+        )
+
+
 _EMBEDDING_ENCODERS: Dict[str, Callable] = {
     "farm": _DefaultEmbeddingEncoder,
     "transformers": _DefaultEmbeddingEncoder,
     "sentence_transformers": _SentenceTransformersEmbeddingEncoder,
     "retribert": _RetribertEmbeddingEncoder,
+    "colbert": _ColbertEmbeddingEncoder,
 }
