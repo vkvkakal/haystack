@@ -8,7 +8,7 @@ from haystack.modeling.model.colbert.utils.utils import print_message, groupby_f
 
 
 def numericize(v):
-    if '.' in v:
+    if "." in v:
         return float(v)
 
     return int(v)
@@ -18,7 +18,7 @@ def load_ranking(path):  # works with annotated and un-annotated ranked lists
     print_message("#> Loading the ranked lists from", path)
 
     with open(path) as f:
-        return [list(map(numericize, line.strip().split('\t'))) for line in f]
+        return [list(map(numericize, line.strip().split("\t"))) for line in f]
 
 
 class Ranking:
@@ -28,9 +28,9 @@ class Ranking:
 
     def provenance(self):
         return self.__provenance
-    
+
     def toDict(self):
-        return {'provenance': self.provenance()}
+        return {"provenance": self.provenance()}
 
     def _prepare_data(self, data):
         # TODO: Handle list of lists???
@@ -60,23 +60,25 @@ class Ranking:
         raise NotImplementedError
 
     def save(self, new_path):
-        assert 'tsv' in new_path.strip('/').split('/')[-1].split('.'), "TODO: Support .json[l] too."
+        assert "tsv" in new_path.strip("/").split("/")[-1].split("."), "TODO: Support .json[l] too."
 
-        with Run().open(new_path, 'w') as f:
+        with Run().open(new_path, "w") as f:
             for items in self.flat_ranking:
-                line = '\t'.join(map(lambda x: str(int(x) if type(x) is bool else x), items)) + '\n'
+                line = "\t".join(map(lambda x: str(int(x) if type(x) is bool else x), items)) + "\n"
                 f.write(line)
 
             output_path = f.name
-            print_message(f"#> Saved ranking of {len(self.data)} queries and {len(self.flat_ranking)} lines to {f.name}")
-        
-        with Run().open(f'{new_path}.meta', 'w') as f:
+            print_message(
+                f"#> Saved ranking of {len(self.data)} queries and {len(self.flat_ranking)} lines to {f.name}"
+            )
+
+        with Run().open(f"{new_path}.meta", "w") as f:
             d = {}
-            d['metadata'] = get_metadata_only()
-            d['provenance'] = self.provenance()
+            d["metadata"] = get_metadata_only()
+            d["provenance"] = self.provenance()
             line = ujson.dumps(d, indent=4)
             f.write(line)
-        
+
         return output_path
 
     @classmethod
