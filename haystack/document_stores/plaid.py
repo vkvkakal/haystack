@@ -371,7 +371,7 @@ class PlaidDocumentStore(SQLDocumentStore):
         saver.save_codec(codec)
 
         with saver.thread():
-            batches = self.enumerate_batches(documents, batch_size)
+            batches = self.enumerate_batches(documents, chunk_size)
             for chunk_idx, offset, passages in tqdm(batches):
                 if config.resume and saver.check_chunk_exists(chunk_idx):
                     continue
@@ -661,6 +661,7 @@ class PlaidDocumentStore(SQLDocumentStore):
         query_emb = query_emb.unsqueeze(0)
         pids, scores = ranker.rank(config, query_emb)
         pids, scores = pids[:top_k], scores[:top_k]
+        pids = [str(pid) for pid in pids]
 
         documents = self.get_documents_by_vector_ids(pids, index=index)
 
