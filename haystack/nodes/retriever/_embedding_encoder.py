@@ -346,9 +346,8 @@ class _ColbertEmbeddingEncoder(_BaseEmbeddingEncoder):
 
         self.progress_bar = retriever.progress_bar
         self.batch_size = retriever.batch_size
-        self.max_length = retriever.max_seq_len
         self.colbert_config = ColBERTConfig.load_from_checkpoint(retriever.embedding_model)
-        self.colbert_config.configure(gpus=torch.cuda.device_count())
+        self.colbert_config.configure(gpus=torch.cuda.device_count(), doc_maxlen=retriever.max_seq_len, nbits=2)
         self.embedding_model = Checkpoint(retriever.embedding_model, colbert_config=self.colbert_config)
         if retriever.use_gpu:
             self.embedding_model.cuda()
