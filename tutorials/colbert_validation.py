@@ -102,7 +102,7 @@ document_store = PlaidDocumentStore(
     plaid_index_path="/home/tstad/git/haystack/data/plaid_index_discrepancy",
     use_gpu=True,
     sql_url="sqlite:////home/tstad/git/haystack/data/plaid_index_discrepancy/plaid_index_discrepancy.db",
-    index="plaid_index_discrepancy"
+    index="plaid_index_discrepancy",
 )
 
 # %%
@@ -191,7 +191,7 @@ retriever = EmbeddingRetriever(
     embedding_model="/home/tstad/git/ColBERT/docs/downloads/colbertv2.0",
     model_format="colbert",
     batch_size=64,
-    max_seq_len=300
+    max_seq_len=300,
 )
 # Important:
 # Now that we initialized the Retriever, we need to call update_embeddings() to iterate over all
