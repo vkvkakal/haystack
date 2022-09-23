@@ -37,7 +37,7 @@ jobs:
 
       - name: Compare current version with latest
         uses: madhead/semver-utils@latest
-        id: version
+        id: versionx
         env:
           VERSION: v${{ steps.version.outputs.major }}.${{ steps.version.outputs.minor }}
 
