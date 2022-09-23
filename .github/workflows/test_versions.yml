@@ -9,6 +9,16 @@ jobs:
   sync:
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Get latest version of Haystack
+        id: latest-version
+        uses: pozetroninc/github-action-get-latest-release@master
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          repository: ${{ github.repository }}
+          excludes: prerelease, draft
 
       - name: Compare current version with latest
         uses: madhead/semver-utils@latest
