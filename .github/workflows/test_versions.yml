@@ -11,7 +11,7 @@ jobs:
     steps:
 
       - name: Checkout this repo
-      - uses: madhead/semver-utils@latest
+        uses: madhead/semver-utils@latest
         id: version
         with:
           # Version being built
@@ -20,7 +20,7 @@ jobs:
           compare-to: ${{ steps.latest-version.outputs.release }}
           # A range to check against
           satisfies: 1.x
-      - run: |
+        run: |
           echo "${{ steps.version.outputs.release }}"           # 1.2.3
           echo "${{ steps.version.outputs.major }}"             # 1
           echo "${{ steps.version.outputs.minor }}"             # 2
