@@ -25,7 +25,7 @@ jobs:
         id: version
         with:
           # Version being built
-          version: ${{  github.ref_name }}
+          version: v1.9.x
           # Compare to latest
           compare-to: ${{ steps.latest-version.outputs.release }}
 
