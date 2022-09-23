@@ -40,6 +40,11 @@ jobs:
         id: versionx
         env:
           VERSION: v${{ steps.version.outputs.major }}.${{ steps.version.outputs.minor }}
+        with:
+          # Version being built
+          version: ${{  github.ref_name }}
+          # Compare to latest
+          compare-to: ${{ steps.latest-version.outputs.release }}
 
       - name: Print everything
         run: |
