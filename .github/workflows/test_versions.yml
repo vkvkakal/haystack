@@ -18,8 +18,6 @@ jobs:
           version: ${{  github.ref_name }}
           # Compare to latest
           compare-to: ${{ steps.latest-version.outputs.release }}
-          # A range to check against
-          satisfies: 1.x
 
       - run: |
           echo "${{ steps.version.outputs.release }}"           # 1.2.3
