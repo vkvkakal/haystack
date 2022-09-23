@@ -39,7 +39,7 @@ jobs:
         uses: madhead/semver-utils@latest
         id: versionx
         env:
-          VERSION: v${{ steps.version.outputs.major }}.${{ steps.version.outputs.minor }}
+          VERSION: "v${{ steps.version.outputs.major }}.${{ steps.version.outputs.minor }}"
         with:
           # Version being built
           version: ${{  github.ref_name }}
