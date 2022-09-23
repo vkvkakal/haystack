@@ -1,16 +1,14 @@
 import requests
 import base64
 import os
+import argparse
 
 from pprint import pprint
 
 
-api_key = "xxx"
-api_key += ":"
-api_key_b64 = "Basic " + base64.b64encode(api_key.encode("utf-8")).decode("utf-8")
-print(api_key_b64)
+README_INTEGRATION_WORKFLOW = "../workflows/readme_integration.yml"
+PYDOC_CONFIGS_DIR = "../../docs/_src/api/pydoc"
 
-new_version = "v5.1"
 
 def assert_valid_version(new_version):
     if not new_version.startswith("v"):
@@ -39,14 +37,6 @@ def create_version(new_version, fork_from_version, is_stable=False):
     headers = {"Accept": "application/json", "Content-Type": "application/json", "Authorization": api_key_b64}
     response = requests.post(url, json=payload, headers=headers)
     print("create_version()")
-    print(response.text)
-
-
-def delete_version(version_name):
-    url = "https://dash.readme.com/api/v1/version/{version_name}".format(version_name=version_name)
-    headers = {"Accept": "application/json", "Authorization": api_key_b64}
-    response = requests.delete(url, headers=headers)
-    print("delete_version()")
     print(response.text)
 
 
@@ -106,12 +96,12 @@ def change_api_category_id(new_version, docs_dir):
 
 def change_workflow(new_latest_name):
     # Change readme_integration.yml to use new latest version
-    lines = [l for l in open("./../.github/workflows/readme_integration.yml", "r")]
+    lines = [l for l in open(README_INTEGRATION_WORKFLOW, "r")]
     for l in lines:
         if "rdme: docs" in l:
             lines[lines.index(l)] = """          rdme: docs ./docs/_src/api/api/temp --key="$README_API_KEY" --version={}""".format(new_latest_name)
     content = "".join(lines)
-    with open("./../.github/workflows/readme_integration.yml", "w") as f:
+    with open(README_INTEGRATION_WORKFLOW, "w") as f:
         f.write(content)
 
 def hide_version(depr_version):
@@ -154,27 +144,49 @@ def generate_new_and_older_name(old):
     return new
 
 if __name__ == "__main__":
-    # Comments here for a case where new_version="v1.9" and v1.9-unstable and v1.8 exist
+    # Comments below are for a case where we are releasing new_version="v1.9".
+    # This requires for v1.9-unstable and v1.8 to exist in Readme.
 
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "-v",
+        "--version",
+        help="The new minor version that is being released (e.g. v1.9.1).",
+        required=True
+    )
+    parser.add_argument(
+        "-k",
+        "--key",
+        help="The Readme API key for Haystack documentation.",
+        required=True
+    )
+    args = parser.parse_args()
+
+    api_key = args.key
+    api_key += ":"
+    api_key_b64 = "Basic " + base64.b64encode(api_key.encode("utf-8")).decode("utf-8")
+
+    new_version = args.version
+    # Drop the patch version, e.g. v1.9.1 -> v1.9
+    new_version = ".".join(new_version.split(".")[:2])
     versions = get_versions()
 
-    # curr_unstable = new_version + "-unstable"
-    # assert new_version[1:] not in versions
-    # assert depr_version[1:] in versions
-    # assert curr_unstable[1:] in versions
+    curr_unstable = new_version + "-unstable"
+    assert new_version[1:] not in versions
+    assert curr_unstable[1:] in versions
 
-    ## create v1.9 forked from v1.9-unstable
-    # create_version(new_version=new_version, fork_from_version=curr_unstable, is_stable=False)
+    # create v1.9 forked from v1.9-unstable
+    create_version(new_version=new_version, fork_from_version=curr_unstable, is_stable=False)
 
-    ## rename v1.9-unstable to v1.10-unstable
-    # new_unstable = generate_new_unstable_name(curr_unstable)
-    # update_version_name(curr_unstable, new_unstable)
+    # rename v1.9-unstable to v1.10-unstable
+    new_unstable = generate_new_unstable_name(curr_unstable)
+    update_version_name(curr_unstable, new_unstable)
 
-    ## edit the category id in the yaml headers of pydoc configs
-    # change_api_category_id(new_version, "_src/api/pydoc")
+    # edit the category id in the yaml headers of pydoc configs
+    change_api_category_id(new_version, PYDOC_CONFIGS_DIR)
 
-    ## change the version tag in the readme_integration.yml workflow
-    # change_workflow(new_unstable)
+    # change the version tag in the readme_integration.yml workflow
+    change_workflow(new_unstable)
 
     ## hide v1.4 and rename v1.3-and-older to v1.4-and-older
     old_and_older_name = "v" + get_old_and_older_name(versions)

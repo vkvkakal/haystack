@@ -3,7 +3,7 @@ name: Testing Haystack-Readme integration
 on:
   push:
     branches:
-      - main
+      - XXXXXX
 
 jobs:
   sync:
@@ -23,6 +23,33 @@ jobs:
           python -m pip install --upgrade pip
           pip install pydoc-markdown==4.5.1
 
+      - name: Get latest version of Haystack
+        id: latest-version
+        uses: pozetroninc/github-action-get-latest-release@master
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          repository: ${{ github.repository }}
+          excludes: prerelease, draft
+
+      - name: Compare current version with latest
+        uses: madhead/semver-utils@latest
+        id: version
+        env:
+          VERSION: v${{ steps.version.outputs.major }}.${{ steps.version.outputs.minor }}
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          # Version being built
+          version: ${{  github.ref_name }}
+          # Compare to latest
+          compare-to: ${{ steps.latest-version.outputs.release }}
+
+      # Only run this when we release a new minor version
+      # Note that patch versions all sync to the one readme minor version
+      # e.g. Haystack 1.9.1 and 1.9.2 both map to Readme 1.9
+      - name: Release Haystack-Readme version
+        if: steps.version.outputs.comparison-result == '>'
+        run: python release_docs --version "$VERSION" --key ${{ secrets.README_API_KEY }}
+
       - name: Generate API docs
         run: ./.github/utils/pydoc-markdown.sh
 
@@ -31,4 +58,4 @@ jobs:
         env:
           README_API_KEY: ${{ secrets.README_API_KEY }}
         with:
-          rdme: docs ./docs/_src/api/api/temp --key="$README_API_KEY" --version=1.10-unstable
+          rdme: docs ./docs/_src/api/api/temp --key="$README_API_KEY" --version="$VERSION"
