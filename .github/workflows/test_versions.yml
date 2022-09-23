@@ -1,0 +1,40 @@
+name: Trying out Version Actions
+
+on:
+  push:
+    branches:
+      - readme_release
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+
+      - name: Checkout this repo
+      - uses: madhead/semver-utils@latest
+        id: version
+        with:
+          # Version being built
+          version: ${{  github.ref_name }}
+          # Compare to latest
+          compare-to: ${{ steps.latest-version.outputs.release }}
+          # A range to check against
+          satisfies: 1.x
+      - run: |
+          echo "${{ steps.version.outputs.release }}"           # 1.2.3
+          echo "${{ steps.version.outputs.major }}"             # 1
+          echo "${{ steps.version.outputs.minor }}"             # 2
+          echo "${{ steps.version.outputs.patch }}"             # 3
+          echo "${{ steps.version.outputs.build }}"             # 42.24
+          echo "${{ steps.version.outputs.build-parts }}"       # 2
+          echo "${{ steps.version.outputs.build-0 }}"           # 42
+          echo "${{ steps.version.outputs.build-1 }}"           # 24
+          echo "${{ steps.version.outputs.comparison-result }}" # <
+          echo "${{ steps.version.outputs.satisfies }}"         # true
+          echo "${{ steps.version.outputs.inc-major }}"         # 2.0.0
+          echo "${{ steps.version.outputs.inc-premajor }}"      # 2.0.0-0
+          echo "${{ steps.version.outputs.inc-minor }}"         # 1.3.0
+          echo "${{ steps.version.outputs.inc-preminor }}"      # 1.3.0-0
+          echo "${{ steps.version.outputs.inc-patch }}"         # 1.2.4
+          echo "${{ steps.version.outputs.inc-prepatch }}"      # 1.2.4-0
+          echo "${{ steps.version.outputs.inc-prerelease }}"    # 1.2.4-0
