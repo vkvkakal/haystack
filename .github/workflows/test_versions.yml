@@ -52,4 +52,4 @@ jobs:
           echo ${{ steps.latest-version.outputs.release }};
           echo ${{ github.repository }};
           echo ${{ github.ref_name }};
-          echo "$VERSIONX";
+          echo "${{ env.VERSIONX }}";
