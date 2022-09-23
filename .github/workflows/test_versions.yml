@@ -39,7 +39,7 @@ jobs:
         uses: madhead/semver-utils@latest
         id: versionx
         env:
-          VERSION: "v${{ steps.version.outputs.major }}.${{ steps.version.outputs.minor }}"
+          VERSIONX: "v${{ steps.version.outputs.major }}.${{ steps.version.outputs.minor }}"
         with:
           # Version being built
           version: ${{  github.ref_name }}
@@ -52,4 +52,4 @@ jobs:
           echo ${{ steps.latest-version.outputs.release }};
           echo ${{ github.repository }};
           echo ${{ github.ref_name }};
-          echo "$VERSION";
+          echo "$VERSIONX";
