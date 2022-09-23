@@ -114,37 +114,71 @@ def change_workflow(new_latest_name):
     with open("./../.github/workflows/readme_integration.yml", "w") as f:
         f.write(content)
 
+def hide_version(depr_version):
+    url = "https://dash.readme.com/api/v1/version/{}".format(depr_version)
+    payload = {
+        "is_beta": False,
+        "version": depr_version,
+        "from": "",
+        "is_hidden": True,
+    }
+
+    headers = {"accept": "application/json", "content-type": "application/json", "authorization": api_key_b64}
+
+    response = requests.put(url, json=payload, headers=headers)
+    print(response.text)
+
+def generate_new_depr_name(depr_name):
+    version_digits_str = depr_name[1:]
+    version_digits_split = version_digits_str.split(".")
+    version_digits_split[1] = str(int(version_digits_split[1]) + 1)
+    incremented_version_digits = ".".join(version_digits_split)
+    new_depr = "v" + incremented_version_digits + "-and-older"
+    return new_depr
+
+def get_old_and_older_name(versions):
+    ret = []
+    for v in versions:
+        if v.endswith("-and-older"):
+            ret.append(v)
+    if len(ret) == 1:
+        return ret[0]
+    return None
+
+def generate_new_and_older_name(old):
+    digits_str = old[1:].replace("-and-older", "")
+    digits_split = digits_str.split(".")
+    digits_split[1] = str(int(digits_split[1]) + 1)
+    incremented_digits = ".".join(digits_split)
+    new = "v" + incremented_digits + "-and-older"
+    return new
+
 if __name__ == "__main__":
+    # Comments here for a case where new_version="v1.9" and v1.9-unstable and v1.8 exist
+
     versions = get_versions()
-    curr_unstable = new_version + "-unstable"
-    assert new_version[1:] not in versions
-    assert curr_unstable[1:] in versions
-    create_version(new_version=new_version, fork_from_version=curr_unstable, is_stable=False)
-    new_unstable = generate_new_unstable_name(curr_unstable)
-    update_version_name(curr_unstable, new_unstable)
-    change_api_category_id(new_version, "_src/api/pydoc")
-    change_workflow(new_unstable)
 
+    # curr_unstable = new_version + "-unstable"
+    # assert new_version[1:] not in versions
+    # assert depr_version[1:] in versions
+    # assert curr_unstable[1:] in versions
 
-"""
-1) Fork v1.0-latest to create v2.0
+    ## create v1.9 forked from v1.9-unstable
+    # create_version(new_version=new_version, fork_from_version=curr_unstable, is_stable=False)
 
-2) Rename v1.0 latest —> v2.0 latest
-ensure v2.0-latest is the default version
+    ## rename v1.9-unstable to v1.10-unstable
+    # new_unstable = generate_new_unstable_name(curr_unstable)
+    # update_version_name(curr_unstable, new_unstable)
 
-3) Ensure latest tutorials and API to sync to v2.0-latest
-- I assume we don’t need to do anything for this
+    ## edit the category id in the yaml headers of pydoc configs
+    # change_api_category_id(new_version, "_src/api/pydoc")
 
-4) Ensure v1.0 tutorials and API sync to v1.0 readme
-- Get category IDs of v1.0 tutorials and API
-- Modify headers in v1.0 tutorials and API
-"""
+    ## change the version tag in the readme_integration.yml workflow
+    # change_workflow(new_unstable)
 
-
-"""
-QUESTIONS
-How do different keys work? API key vs authentication vs?
-How to change category id in yamls?
-
-
-"""
+    ## hide v1.4 and rename v1.3-and-older to v1.4-and-older
+    old_and_older_name = "v" + get_old_and_older_name(versions)
+    new_and_older_name = generate_new_and_older_name(old_and_older_name)
+    depr_version = new_and_older_name.replace("-and-older", "")
+    hide_version(depr_version)
+    update_version_name(old_and_older_name, new_and_older_name)
