@@ -15,7 +15,7 @@ jobs:
       - name: Get latest version of Haystack
         id: latest-version
         uses: pozetroninc/github-action-get-latest-release@master
-#        if: startsWith(github.ref, 'refs/tags/')
+        if: startsWith(github.ref, 'refs/tags/')
         with:
           repository: ${{ github.repository }}
           excludes: prerelease, draft
@@ -25,7 +25,7 @@ jobs:
         id: version
         with:
           # Version being built
-          version: v1.9.x
+          version: ${{  github.ref_name }}
           # Compare to latest
           compare-to: ${{ steps.latest-version.outputs.release }}
 
@@ -35,9 +35,16 @@ jobs:
           echo ${{ steps.version.outputs.comparison-result }};
           echo ${{ steps.latest-version.outputs.release }};
 
+      - name: Compare current version with latest
+        uses: madhead/semver-utils@latest
+        id: version
+        env:
+          VERSION: v${{ steps.version.outputs.major }}.${{ steps.version.outputs.minor }}
+
       - name: Print everything
         run: |
           echo ${{ steps.version.outputs.comparison-result }};
           echo ${{ steps.latest-version.outputs.release }};
           echo ${{ github.repository }};
           echo ${{ github.ref_name }};
+          echo "$VERSION";
