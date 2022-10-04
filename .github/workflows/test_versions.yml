@@ -28,6 +28,12 @@ jobs:
           # Compare to latest
           compare-to: ${{ steps.latest-version.outputs.release }}
 
+      # Save the version of the current branch to a variable
+      - name: Print stored version
+        env:
+          VERSION: v${{ steps.version.outputs.major }}.${{ steps.version.outputs.minor }}
+        run: echo "${{ env.VERSION }}"
+
       - run: |
           echo "${{ steps.version.outputs.release }}"           # 1.2.3
           echo "${{ steps.version.outputs.major }}"             # 1
