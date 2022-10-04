@@ -31,11 +31,12 @@ jobs:
 
       - name: Release Haystack-Readme version
         env:
+          VERSIONY: ${{ format('v{0}.{1}', steps.version.outputs.major, steps.version.outputs.minor) }}
           VERSION: v${steps.version.outputs.major}.${steps.version.outputs.minor}
           VERSIONX: "v${{ steps.version.outputs.major }}.${{ steps.version.outputs.minor }}"
         run: |
-          echo "${{ env.VERSION }}"
-          echo $VERSIONX
+          echo "${{ env.VERSIONY }}"
+          echo $VERSIONY
 
       - name: Use latest
         if: steps.version.outputs.comparison-result == '>'
