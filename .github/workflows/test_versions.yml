@@ -24,7 +24,7 @@ jobs:
         id: version
         with:
           # Version being built
-          version: v1.8.x
+          version: v1.8
           # Compare to latest
           compare-to: ${{ steps.latest-version.outputs.release }}
 
