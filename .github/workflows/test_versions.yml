@@ -49,9 +49,10 @@ jobs:
 
       - name: Release Haystack-Readme version
         id: variables
+        env:
+            VERSION: v${{ steps.version.outputs.major }}.${{ steps.version.outputs.minor }}
         run: |
-          echo "::set-output name=VERSION::$(steps.latest-version.outputs.release)\n"
-          echo $VERSIONY
+          echo $VERSION
 
       - name: Use latest
         if: steps.version.outputs.comparison-result == '>'
