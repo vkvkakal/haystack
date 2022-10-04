@@ -31,7 +31,7 @@ jobs:
 
       - name: Release Haystack-Readme version
         env:
-          VERSION: v${{ steps.version.outputs.major }}.${{ steps.version.outputs.minor }}
+          VERSION: v$steps.version.outputs.major.$steps.version.outputs.minor
           VERSIONX: "v${{ steps.version.outputs.major }}.${{ steps.version.outputs.minor }}"
         run: |
           echo "${{ env.VERSION }}"
