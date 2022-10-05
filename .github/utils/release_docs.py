@@ -2,6 +2,7 @@ import requests
 import base64
 import os
 import argparse
+import requests
 
 from pprint import pprint
 
@@ -65,16 +66,25 @@ def generate_new_unstable_name(unstable_version_name):
 
 
 def get_category_id(version):
-    import requests
-
-    url = "https://dash.readme.com/api/v1/categories/haystack-rest-api"
+    url = "https://dash.readme.com/api/v1/categories/haystack-classes"
     headers = {
         "accept": "application/json",
         "x-readme-version": version,
         "authorization": api_key_b64,
     }
     response = requests.get(url, headers=headers)
+    pprint(response.text)
     return response.json()["id"]
+
+def get_categories(version):
+    url = "https://dash.readme.com/api/v1/categories?perPage=10&page=1"
+    headers = {
+        "accept": "application/json",
+        "x-readme-version": version,
+        "authorization": api_key_b64,
+    }
+    response = requests.get(url, headers=headers)
+    return response.text
 
 
 def change_api_category_id(new_version, docs_dir):
@@ -179,8 +189,6 @@ if __name__ == "__main__":
     if not args.skip_readme_changes:
 
         curr_unstable = new_version + "-unstable"
-        print(new_version)
-        pprint(versions)
         assert new_version[1:] not in versions
         assert curr_unstable[1:] in versions
 
