@@ -163,7 +163,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--skip_readme_changes",
         help="Do not perform any of the Readme release steps, only change the headers of the API docs so they point to a new category. Used for debugging.",
-        type=bool
+        action='store_true'
     )
     args = parser.parse_args()
 
