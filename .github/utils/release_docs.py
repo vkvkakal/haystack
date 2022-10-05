@@ -160,6 +160,11 @@ if __name__ == "__main__":
         help="The Readme API key for Haystack documentation.",
         required=True
     )
+    parser.add_argument(
+        "--skip_readme_changes",
+        help="Do not perform any of the Readme release steps, only change the headers of the API docs so they point to a new category. Used for debugging.",
+        type=bool
+    )
     args = parser.parse_args()
 
     api_key = args.key
@@ -171,26 +176,25 @@ if __name__ == "__main__":
     new_version = ".".join(new_version.split(".")[:2])
     versions = get_versions()
 
-    curr_unstable = new_version + "-unstable"
-    assert new_version[1:] not in versions
-    assert curr_unstable[1:] in versions
+    if args.skip_readme_changes:
 
-    # create v1.9 forked from v1.9-unstable
-    create_version(new_version=new_version, fork_from_version=curr_unstable, is_stable=False)
+        curr_unstable = new_version + "-unstable"
+        assert new_version[1:] not in versions
+        assert curr_unstable[1:] in versions
 
-    # rename v1.9-unstable to v1.10-unstable
-    new_unstable = generate_new_unstable_name(curr_unstable)
-    update_version_name(curr_unstable, new_unstable)
+        # create v1.9 forked from v1.9-unstable
+        create_version(new_version=new_version, fork_from_version=curr_unstable, is_stable=False)
+
+        # rename v1.9-unstable to v1.10-unstable
+        new_unstable = generate_new_unstable_name(curr_unstable)
+        update_version_name(curr_unstable, new_unstable)
 
     # edit the category id in the yaml headers of pydoc configs
     change_api_category_id(new_version, PYDOC_CONFIGS_DIR)
 
-    # change the version tag in the readme_integration.yml workflow
-    change_workflow(new_unstable)
-
-    ## hide v1.4 and rename v1.3-and-older to v1.4-and-older
-    old_and_older_name = "v" + get_old_and_older_name(versions)
-    new_and_older_name = generate_new_and_older_name(old_and_older_name)
-    depr_version = new_and_older_name.replace("-and-older", "")
-    hide_version(depr_version)
-    update_version_name(old_and_older_name, new_and_older_name)
+    # ## hide v1.4 and rename v1.3-and-older to v1.4-and-older
+    # old_and_older_name = "v" + get_old_and_older_name(versions)
+    # new_and_older_name = generate_new_and_older_name(old_and_older_name)
+    # depr_version = new_and_older_name.replace("-and-older", "")
+    # hide_version(depr_version)
+    # update_version_name(old_and_older_name, new_and_older_name)

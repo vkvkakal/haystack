@@ -1,9 +1,12 @@
-name: Testing Haystack-Readme integration
+name: Haystack-Readme integration
 
 on:
+  workflow_dispatch:
   push:
     branches:
-      - readme_release
+      - main
+    tags:
+      - v*
 
 jobs:
   sync:
@@ -26,7 +29,7 @@ jobs:
       - name: Get latest version of Haystack
         id: latest-version
         uses: pozetroninc/github-action-get-latest-release@master
-        #if: startsWith(github.ref, 'refs/tags/')
+        if: startsWith(github.ref, 'refs/tags/')
         with:
           repository: ${{ github.repository }}
           excludes: prerelease, draft
@@ -34,10 +37,10 @@ jobs:
       - name: Compare current version with latest
         uses: madhead/semver-utils@latest
         id: version
-        #if: startsWith(github.ref, 'refs/tags/')
+        if: startsWith(github.ref, 'refs/tags/')
         with:
           # Version being built
-          version: v1.10.0
+          version: ${{ github.ref_name }}
           # Compare to latest
           compare-to: ${{ steps.latest-version.outputs.release }}
 
@@ -46,16 +49,21 @@ jobs:
           version: ${{steps.version.outputs.release}}
         run: |
           echo $version | sed -e 's/\.[0-9]*$//' | { var=$(cat); echo "VERSION_SHORT=${var}" >> $GITHUB_ENV; }
-
-      - name: Print stored version
-        run: echo "${{ env.VERSION_SHORT }}"
+          echo "${{ env.VERSION_SHORT }}"
 
       # Only run this when we release a new minor version
       # Note that patch versions all sync to the one readme minor version
       # e.g. Haystack 1.9.1 and 1.9.2 both map to Readme 1.9
+      # TODO XXX REMOVE FLAG
       - name: Release Haystack-Readme version
         if: steps.version.outputs.comparison-result == '>'
-        run: python ./.github/utils/release_docs.py --version "VERSION_SHORT" --key ${{ secrets.README_API_KEY }}
+        run: |
+          python ./.github/utils/release_docs.py --version "$VERSION_SHORT" --key ${{ secrets.README_API_KEY }} --skip_readme_changes
+            git config --global user.name "github-actions[bot]"
+            git config --global user.email "github-actions[bot]@users.noreply.github.com"
+            git add .
+            git commit -m "Update API docs headers"
+            git push
 
       - name: Generate API docs
         run: ./.github/utils/pydoc-markdown.sh
