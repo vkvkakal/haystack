@@ -179,6 +179,8 @@ if __name__ == "__main__":
     if args.skip_readme_changes:
 
         curr_unstable = new_version + "-unstable"
+        print(new_version)
+        pprint(versions)
         assert new_version[1:] not in versions
         assert curr_unstable[1:] in versions
 
