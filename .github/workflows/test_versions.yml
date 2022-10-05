@@ -24,7 +24,7 @@ jobs:
         id: version
         with:
           # Version being built
-          version: v1.8.0
+          version: v1.8.0 #XXXXXXXXXXXXXXX
           # Compare to latest
           compare-to: ${{ steps.latest-version.outputs.release }}
 
@@ -32,6 +32,7 @@ jobs:
         env:
           version: ${{steps.version.outputs.release}}
         run: |
+          echo "$version"
           echo "$version" | sed -e 's/\.[0-9]*$//' | echo "version_short=$1" >> $GITHUB_ENV
 
       - name: Print short version name
