@@ -22,7 +22,6 @@ jobs:
       - name: Compare current version with latest
         uses: madhead/semver-utils@latest
         id: version
-        env:
         with:
           # Version being built
           version: v1.8.0
@@ -30,8 +29,10 @@ jobs:
           compare-to: ${{ steps.latest-version.outputs.release }}
 
       - name: Save short version name
+        with:
+          version: ${{steps.version.outputs.release}}
         run: |
-          echo "$1" | sed -e 's/\.[0-9]*$//' | echo"version_short=$1" >> $GITHUB_ENV
+          echo $version | sed -e 's/\.[0-9]*$//' | echo"version_short=$1" >> $GITHUB_ENV
 
       - name: Print short version name
         run: echo ${{ env.version_short }}
