@@ -3,7 +3,7 @@ name: Trying out Version Actions
 on:
   push:
     branches:
-      - readme_release
+      - xxxx
 
 jobs:
   sync:
