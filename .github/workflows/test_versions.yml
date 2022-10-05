@@ -32,8 +32,7 @@ jobs:
         env:
           version: ${{steps.version.outputs.release}}
         run: |
-          echo $version | sed -e 's/\.[0-9]*$//' | echo $1
-          echo $version | sed -e 's/\.[0-9]*$//' | echo version_short=$1 >> $GITHUB_ENV
+          echo $version | sed -e 's/\.[0-9]*$//' | { var=$(cat); echo "version_short=${var}" >> $GITHUB_ENV; }
 
       - name: Print short version name
         run: echo ${{ env.version_short }}
