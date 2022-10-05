@@ -63,7 +63,7 @@ jobs:
       # Only run this when we release a new minor version
       # Note that patch versions all sync to the one readme minor version
       # e.g. Haystack 1.9.1 and 1.9.2 both map to Readme 1.9
-      # TODO XXX REMOVE FLAG
+      # TODO XXX REMOVE FLAGG
       - name: Release Haystack-Readme version
         if: steps.version.outputs.comparison-result == '>'
         run: |
