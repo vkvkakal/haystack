@@ -58,7 +58,7 @@ jobs:
           version: ${{steps.version.outputs.release}}
         run: |
           echo $version | sed -e 's/\.[0-9]*$//' | { var=$(cat); echo "VERSION_SHORT=${var}" >> $GITHUB_ENV; }
-          echo "${{ env.VERSION_SHORT }}"
+          echo $version | sed -e 's/\.[0-9]*$//'
 
       # Only run this when we release a new minor version
       # Note that patch versions all sync to the one readme minor version

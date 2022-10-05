@@ -176,7 +176,7 @@ if __name__ == "__main__":
     new_version = ".".join(new_version.split(".")[:2])
     versions = get_versions()
 
-    if args.skip_readme_changes:
+    if not args.skip_readme_changes:
 
         curr_unstable = new_version + "-unstable"
         print(new_version)
