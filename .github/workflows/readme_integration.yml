@@ -55,7 +55,7 @@ jobs:
       # e.g. Haystack 1.9.1 and 1.9.2 both map to Readme 1.9
       - name: Release Haystack-Readme version
         if: steps.version.outputs.comparison-result == '>'
-        run: python release_docs --version "VERSION_SHORT" --key ${{ secrets.README_API_KEY }}
+        run: python release_docs.py --version "VERSION_SHORT" --key ${{ secrets.README_API_KEY }}
 
       - name: Generate API docs
         run: ./.github/utils/pydoc-markdown.sh
