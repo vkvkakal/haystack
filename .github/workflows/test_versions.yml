@@ -22,17 +22,20 @@ jobs:
       - name: Compare current version with latest
         uses: madhead/semver-utils@latest
         id: version
+        env:
         with:
           # Version being built
-          version: v1.8
+          version: v1.8.0
           # Compare to latest
           compare-to: ${{ steps.latest-version.outputs.release }}
 
-      # Save the version of the current branch to a variable
-      - name: Print stored version
-        env:
-          VERSION: v${{ steps.version.outputs.major }}.${{ steps.version.outputs.minor }}
-        run: echo "${{ env.VERSION }}"
+      - name: Save short version name
+        run: |
+          echo "$1" | sed -e 's/\.[0-9]*$//' | echo"version_short=$1" >> $GITHUB_ENV
+
+      - name: Print short version name
+        run: echo ${{ env.version_short }}
+
 
       - run: |
           echo "${{ steps.version.outputs.release }}"           # 1.2.3
