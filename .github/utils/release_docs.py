@@ -78,6 +78,7 @@ def get_category_id(version):
 
 
 def change_api_category_id(new_version, docs_dir):
+    print(new_version)
     category_id = get_category_id(new_version)
     print(category_id)
     ## Replace the category id in the yaml headers
@@ -88,7 +89,6 @@ def change_api_category_id(new_version, docs_dir):
                 lines = [l for l in open(file_path, "r")]
                 for l in lines:
                     if "category: " in l:
-                        print("x")
                         lines[lines.index(l)] = "   category: {}\n".format(category_id)
                 content = "".join(lines)
                 with open(file_path, "w") as f:
