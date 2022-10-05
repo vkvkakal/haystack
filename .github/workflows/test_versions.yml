@@ -29,7 +29,7 @@ jobs:
           compare-to: ${{ steps.latest-version.outputs.release }}
 
       - name: Save short version name
-        with:
+        env:
           version: ${{steps.version.outputs.release}}
         run: |
           echo $version | sed -e 's/\.[0-9]*$//' | echo"version_short=$1" >> $GITHUB_ENV
