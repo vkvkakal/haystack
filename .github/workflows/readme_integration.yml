@@ -34,4 +34,4 @@ jobs:
         env:
           README_API_KEY: ${{ secrets.README_API_KEY }}
         with:
-          rdme: docs ./docs/_src/api/api/temp --key="$README_API_KEY"
+          rdme: docs ./docs/_src/api/api/temp --key="$README_API_KEY" --version=5.2-unstable
