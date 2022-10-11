@@ -6,7 +6,7 @@ from haystack.nodes.base import BaseComponent
 
 class BaseQueryClassifier(BaseComponent):
     """
-    Abstract class for Query Classifiers
+    Abstract class for Query Classifiersxxx
     """
 
     outgoing_edges = 2
