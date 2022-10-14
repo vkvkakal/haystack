@@ -63,7 +63,7 @@ To create an RFC:
 1. Copy `0000-template.md` to `text/0000-my-feature.md`, where 'my-feature' is a descriptive name of the feature you're proposing. Don't assign an RFC number yet.
 2. Fill in the RFC. Pay attention to details. RFCs that present convincing motivation, demonstrate an understanding of the feature impact, and honestly present the drawbacks and alternatives tend to be received well.
 3. Submit the RFC with a pull request. This ensures the RFC receives design feedback from a larger community. As the author, you should be prepared to revise it in response.
-4. Rename the file using the PR number, for example from `text/0000-my-feature.md` to `text/4242-my-feature.md`.
+4. Rename the file using the RFC's own PR number, for example from `text/0000-my-feature.md` to `text/4242-my-feature.md`.
 5. Reach an agreement with the reviewers and integrate the feedback you got. RFCs that have broad support are much more likely to make progress than those that don't receive any comments.
 6. Now it's time for the core developers to take over and decide whether the RFC is a candidate for inclusion in Haystack. Note that a team review may take a long time, and we suggest that you ask members of the community to review it first.
 7. RFCs that are candidates for inclusion in Haystack enter a "final comment period" lasting 3 calendar days. To let you know that your RFC is entering the final comment period, we add a comment and a label to your PR.
