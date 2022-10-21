@@ -16,12 +16,12 @@ dataset: {self.dataset}
 
 ## Hyperparameters
 
-batch_size = {hyperparams.batch_size}
-n_epochs = {hyperparams.n_epochs}
-learning_rate = {hyperparams.learning_rate}
-max_seq_len = {hyperparams.max_seq_len}
-dev_split = {hyperparams.dev_split}
-warmup_proportion = {hyperparams.warmup_proportion}
+batch_size = {hyperparams["batch_size"]}
+n_epochs = {hyperparams["n_epochs"]}
+learning_rate = {hyperparams["learning_rate"]}
+max_seq_len = {hyperparams["max_seq_len"]}
+dev_split = {hyperparams["dev_split"]}
+warmup_proportion = {hyperparams["warmup_proportion"]}
 
 This model was trained with [Haystack](https://haystack.deeset.ai)
 

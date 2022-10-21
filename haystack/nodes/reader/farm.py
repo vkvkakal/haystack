@@ -203,6 +203,7 @@ class FARMReader(BaseReader):
         self.dev_split = dev_split
         self.learning_rate = learning_rate
         self.warmup_proportion = warmup_proportion
+        self.batch_size = batch_size
 
         if num_processes is None:
             num_processes = multiprocessing.cpu_count() - 1 or 1
