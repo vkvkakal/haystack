@@ -785,8 +785,10 @@ class FARMReader(BaseReader):
                     if os.path.getsize(file_path) > (5 * 1024 * 1024):
                         large_files.append(rel_path)
 
-            if model_card:
+            if model_card and hasattr(self, '_trainer'):
                 create_model_card(self, repo_id, tmp_dir)
+            elif model_card:
+                logger.warning("Model cards can only be uploaded during a training process. Skipping model card creation")
 
             if len(large_files) > 0:
                 logger.info("Track files with git lfs: {}".format(", ".join(large_files)))

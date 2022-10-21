@@ -7,8 +7,8 @@ def create_model_card(model, repo_id, path):
     model_name = repo_id.split('/')[-1]
     print("My Model Card new: ", model_name)
     hyperparams = {
-        "batch_size": model.trainer.batch_size,
-        "n_epochs": model.trainer.epochs,
+        "batch_size": model._trainer.batch_size,
+        "n_epochs": model._trainer.epochs,
         "learning_rate": model.learning_rate,
         "max_seq_len": model.max_seq_len,
         "dev_split": model.dev_split,
@@ -17,7 +17,7 @@ def create_model_card(model, repo_id, path):
 
     print(f"Hyperparams: {hyperparams}")
 
-    model_card = BaseReaderModelCard(model_name=model_name).__MODEL_CARD__
+    model_card = BaseReaderModelCard(model_name=model_name, hyperparams=hyperparams).__MODEL_CARD__
 
     for param, val in hyperparams.items():
         model_card.replace(f"${param}$", val)
