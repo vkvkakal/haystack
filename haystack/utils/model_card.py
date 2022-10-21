@@ -7,7 +7,7 @@ def create_model_card(model, repo_id, path):
     model_name = repo_id.split('/')[-1]
     print("My Model Card new: ", model_name)
     hyperparams = {
-        "batch_size": model._trainer.batch_size,
+        "batch_size": model.batch_size,
         "n_epochs": model._trainer.epochs,
         "learning_rate": model.learning_rate,
         "max_seq_len": model.max_seq_len,
