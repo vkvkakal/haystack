@@ -34,12 +34,15 @@ logger = logging.getLogger(__name__)
 
 BaseConfig.arbitrary_types_allowed = True
 
+#: Types of content_types supported
+ContentTypes = Literal["text", "table", "image", "audio"]
+
 
 @dataclass
 class Document:
     id: str
     content: Union[str, pd.DataFrame]
-    content_type: Literal["text", "table", "image", "audio"] = Field(default="text")
+    content_type: ContentTypes = Field(default="text")
     meta: Dict[str, Any] = Field(default={})
     score: Optional[float] = None
     embedding: Optional[np.ndarray] = None
@@ -52,7 +55,7 @@ class Document:
     def __init__(
         self,
         content: Union[str, pd.DataFrame],
-        content_type: Literal["text", "table", "image", "audio"] = "text",
+        content_type: ContentTypes = "text",
         id: Optional[str] = None,
         score: Optional[float] = None,
         meta: Optional[Dict[str, Any]] = None,
@@ -69,7 +72,7 @@ class Document:
         It's particularly helpful for handling of duplicates and referencing documents in other objects (e.g. Labels)
         There's an easy option to convert from/to dicts via `from_dict()` and `to_dict`.
         :param content: Content of the document. For most cases, this will be text, but it can be a table or image.
-        :param content_type: One of "text", "table" or "image". Haystack components can use this to adjust their
+        :param content_type: One of "text", "table", "image" or "audio". Haystack components can use this to adjust their
                              handling of Documents and check compatibility.
         :param id: Unique ID for the document. If not supplied by the user, we'll generate one automatically by
                    creating a hash from the supplied text. This behaviour can be further adjusted by `id_hash_keys`.
@@ -225,13 +228,17 @@ class Document:
         )
 
     def __repr__(self):
-        return f"<Document: {str(self.to_dict())}>"
+        doc_dict = self.to_dict()
+        embedding = doc_dict.get("embedding", None)
+        if embedding is not None:
+            doc_dict["embedding"] = f"<embedding of shape {getattr(embedding, 'shape', '[no shape]')}>"
+        return f"<Document: {str(doc_dict)}>"
 
     def __str__(self):
         # In some cases, self.content is None (therefore not subscriptable)
         if self.content is None:
             return f"<Document: id={self.id}, content=None>"
-        return f"<Document: id={self.id}, content='{self.content[:100]} {'...' if len(self.content) > 100 else ''}'>"
+        return f"<Document: id={self.id}, content='{self.content[:100]}{'...' if len(self.content) > 100 else ''}'>"
 
     def __lt__(self, other):
         """Enable sorting of Documents by score"""
@@ -259,7 +266,7 @@ class SpeechDocument(Document):
         # In some cases, self.content is None (therefore not subscriptable)
         if self.content is None:
             return f"<SpeechDocument: id={self.id}, content=None>"
-        return f"<SpeechDocument: id={self.id}, content='{self.content[:100]} {'...' if len(self.content) > 100 else ''}', content_audio={self.content_audio}>"
+        return f"<SpeechDocument: id={self.id}, content='{self.content[:100]}{'...' if len(self.content) > 100 else ''}', content_audio={self.content_audio}>"
 
     def to_dict(self, field_map={}) -> Dict:
         dictionary = super().to_dict(field_map=field_map)
@@ -293,10 +300,10 @@ class Span:
     start: int
     end: int
     """
-    Defining a sequence of characters (Text span) or cells (Table span) via start and end index. 
-    For extractive QA: Character where answer starts/ends  
+    Defining a sequence of characters (Text span) or cells (Table span) via start and end index.
+    For extractive QA: Character where answer starts/ends
     For TableQA: Cell where the answer starts/ends (counted from top left to bottom right of table)
-    
+
     :param start: Position where the span starts
     :param end:  Position where the spand ends
     """
@@ -318,24 +325,24 @@ class Answer:
     For example, it's used within some Nodes like the Reader, but also in the REST API.
 
     :param answer: The answer string. If there's no possible answer (aka "no_answer" or "is_impossible) this will be an empty string.
-    :param type: One of ("generative", "extractive", "other"): Whether this answer comes from an extractive model 
-                 (i.e. we can locate an exact answer string in one of the documents) or from a generative model 
-                 (i.e. no pointer to a specific document, no offsets ...). 
+    :param type: One of ("generative", "extractive", "other"): Whether this answer comes from an extractive model
+                 (i.e. we can locate an exact answer string in one of the documents) or from a generative model
+                 (i.e. no pointer to a specific document, no offsets ...).
     :param score: The relevance score of the Answer determined by a model (e.g. Reader or Generator).
                   In the range of [0,1], where 1 means extremely relevant.
     :param context: The related content that was used to create the answer (i.e. a text passage, part of a table, image ...)
     :param offsets_in_document: List of `Span` objects with start and end positions of the answer **in the
                                 document** (as stored in the document store).
-                                For extractive QA: Character where answer starts => `Answer.offsets_in_document[0].start 
+                                For extractive QA: Character where answer starts => `Answer.offsets_in_document[0].start
                                 For TableQA: Cell where the answer starts (counted from top left to bottom right of table) => `Answer.offsets_in_document[0].start
-                                (Note that in TableQA there can be multiple cell ranges that are relevant for the answer, thus there can be multiple `Spans` here) 
+                                (Note that in TableQA there can be multiple cell ranges that are relevant for the answer, thus there can be multiple `Spans` here)
     :param offsets_in_context: List of `Span` objects with start and end positions of the answer **in the
                                 context** (i.e. the surrounding text/table of a certain window size).
-                                For extractive QA: Character where answer starts => `Answer.offsets_in_document[0].start 
+                                For extractive QA: Character where answer starts => `Answer.offsets_in_document[0].start
                                 For TableQA: Cell where the answer starts (counted from top left to bottom right of table) => `Answer.offsets_in_document[0].start
-                                (Note that in TableQA there can be multiple cell ranges that are relevant for the answer, thus there can be multiple `Spans` here) 
+                                (Note that in TableQA there can be multiple cell ranges that are relevant for the answer, thus there can be multiple `Spans` here)
     :param document_id: ID of the document that the answer was located it (if any)
-    :param meta: Dict that can be used to associate any kind of custom meta data with the answer. 
+    :param meta: Dict that can be used to associate any kind of custom meta data with the answer.
                  In extractive QA, this will carry the meta data of the document where the answer was found.
     """
 
@@ -679,7 +686,7 @@ class MultiLabel:
         # Hence, we exclude them here as well.
 
         self.document_ids = [l.document.id for l in self.labels if not l.no_answer]
-        self.contexts = [l.document.content for l in self.labels if not l.no_answer]
+        self.contexts = [str(l.document.content) for l in self.labels if not l.no_answer]
 
     def _aggregate_labels(self, key, must_be_single_value=True) -> List[Any]:
         if any(isinstance(getattr(l, key), dict) for l in self.labels):
@@ -1389,7 +1396,7 @@ class EvaluationResult:
                         index=False, quoting=csv.QUOTE_NONNUMERIC (to avoid problems with \r chars)
         """
         out_dir = out_dir if isinstance(out_dir, Path) else Path(out_dir)
-        logger.info(f"Saving evaluation results to {out_dir}")
+        logger.info("Saving evaluation results to %s", out_dir)
         if not out_dir.exists():
             out_dir.mkdir(parents=True)
         for node_name, df in self.node_results.items():
