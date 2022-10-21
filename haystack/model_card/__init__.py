@@ -1,0 +1,1 @@
+from haystack.model_card.reader import BaseReaderModelCard
