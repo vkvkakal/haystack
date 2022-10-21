@@ -30,7 +30,6 @@ from haystack.nodes.reader.base import BaseReader
 from haystack.utils.early_stopping import EarlyStopping
 from haystack.utils.model_card import create_model_card
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -46,29 +45,29 @@ class FARMReader(BaseReader):
     """
 
     def __init__(
-        self,
-        model_name_or_path: str,
-        model_version: Optional[str] = None,
-        context_window_size: int = 150,
-        batch_size: int = 50,
-        use_gpu: bool = True,
-        devices: Optional[List[Union[str, torch.device]]] = None,
-        no_ans_boost: float = 0.0,
-        return_no_answer: bool = False,
-        top_k: int = 10,
-        top_k_per_candidate: int = 3,
-        top_k_per_sample: int = 1,
-        num_processes: Optional[int] = None,
-        max_seq_len: int = 256,
-        doc_stride: int = 128,
-        progress_bar: bool = True,
-        duplicate_filtering: int = 0,
-        use_confidence_scores: bool = True,
-        confidence_threshold: Optional[float] = None,
-        proxies: Optional[Dict[str, str]] = None,
-        local_files_only=False,
-        force_download=False,
-        use_auth_token: Optional[Union[str, bool]] = None,
+            self,
+            model_name_or_path: str,
+            model_version: Optional[str] = None,
+            context_window_size: int = 150,
+            batch_size: int = 50,
+            use_gpu: bool = True,
+            devices: Optional[List[Union[str, torch.device]]] = None,
+            no_ans_boost: float = 0.0,
+            return_no_answer: bool = False,
+            top_k: int = 10,
+            top_k_per_candidate: int = 3,
+            top_k_per_sample: int = 1,
+            num_processes: Optional[int] = None,
+            max_seq_len: int = 256,
+            doc_stride: int = 128,
+            progress_bar: bool = True,
+            duplicate_filtering: int = 0,
+            use_confidence_scores: bool = True,
+            confidence_threshold: Optional[float] = None,
+            proxies: Optional[Dict[str, str]] = None,
+            local_files_only=False,
+            force_download=False,
+            use_auth_token: Optional[Union[str, bool]] = None,
     ):
 
         """
@@ -166,40 +165,44 @@ class FARMReader(BaseReader):
         self.model_name_or_path = model_name_or_path  # Used in distillation, see DistillationDataSilo._get_checksum()
 
     def _training_procedure(
-        self,
-        data_dir: str,
-        train_filename: str,
-        dev_filename: Optional[str] = None,
-        test_filename: Optional[str] = None,
-        use_gpu: Optional[bool] = None,
-        devices: List[torch.device] = [],
-        batch_size: int = 10,
-        n_epochs: int = 2,
-        learning_rate: float = 1e-5,
-        max_seq_len: Optional[int] = None,
-        warmup_proportion: float = 0.2,
-        dev_split: float = 0,
-        evaluate_every: int = 300,
-        save_dir: Optional[str] = None,
-        num_processes: Optional[int] = None,
-        use_amp: str = None,
-        checkpoint_root_dir: Path = Path("model_checkpoints"),
-        checkpoint_every: Optional[int] = None,
-        checkpoints_to_keep: int = 3,
-        teacher_model: Optional["FARMReader"] = None,
-        teacher_batch_size: Optional[int] = None,
-        caching: bool = False,
-        cache_path: Path = Path("cache/data_silo"),
-        distillation_loss_weight: float = 0.5,
-        distillation_loss: Union[str, Callable[[torch.Tensor, torch.Tensor], torch.Tensor]] = "kl_div",
-        temperature: float = 1.0,
-        tinybert: bool = False,
-        processor: Optional[Processor] = None,
-        grad_acc_steps: int = 1,
-        early_stopping: Optional[EarlyStopping] = None,
+            self,
+            data_dir: str,
+            train_filename: str,
+            dev_filename: Optional[str] = None,
+            test_filename: Optional[str] = None,
+            use_gpu: Optional[bool] = None,
+            devices: List[torch.device] = [],
+            batch_size: int = 10,
+            n_epochs: int = 2,
+            learning_rate: float = 1e-5,
+            max_seq_len: Optional[int] = None,
+            warmup_proportion: float = 0.2,
+            dev_split: float = 0,
+            evaluate_every: int = 300,
+            save_dir: Optional[str] = None,
+            num_processes: Optional[int] = None,
+            use_amp: str = None,
+            checkpoint_root_dir: Path = Path("model_checkpoints"),
+            checkpoint_every: Optional[int] = None,
+            checkpoints_to_keep: int = 3,
+            teacher_model: Optional["FARMReader"] = None,
+            teacher_batch_size: Optional[int] = None,
+            caching: bool = False,
+            cache_path: Path = Path("cache/data_silo"),
+            distillation_loss_weight: float = 0.5,
+            distillation_loss: Union[str, Callable[[torch.Tensor, torch.Tensor], torch.Tensor]] = "kl_div",
+            temperature: float = 1.0,
+            tinybert: bool = False,
+            processor: Optional[Processor] = None,
+            grad_acc_steps: int = 1,
+            early_stopping: Optional[EarlyStopping] = None,
     ):
         if dev_filename:
             dev_split = 0
+
+        self.dev_split = dev_split
+        self.learning_rate = learning_rate
+        self.warmup_proportion = warmup_proportion
 
         if num_processes is None:
             num_processes = multiprocessing.cpu_count() - 1 or 1
@@ -240,7 +243,7 @@ class FARMReader(BaseReader):
         # 2. Create a DataSilo that loads several datasets (train/dev/test), provides DataLoaders for them
         # and calculates a few descriptive statistics of our datasets
         if (
-            teacher_model and not tinybert
+                teacher_model and not tinybert
         ):  # checks if teacher model is passed as parameter, in that case assume model distillation is used
             data_silo = DistillationDataSilo(
                 teacher_model,
@@ -281,7 +284,8 @@ class FARMReader(BaseReader):
                 raise ValueError("TinyBERT distillation requires a teacher model.")
             trainer = TinyBERTDistillationTrainer.create_or_load_checkpoint(
                 model=model,
-                teacher_model=teacher_model.inferencer.model,  # teacher needs to be passed as teacher outputs aren't cached
+                teacher_model=teacher_model.inferencer.model,
+                # teacher needs to be passed as teacher outputs aren't cached
                 optimizer=optimizer,
                 data_silo=data_silo,
                 epochs=n_epochs,
@@ -299,7 +303,7 @@ class FARMReader(BaseReader):
             )
 
         elif (
-            teacher_model
+                teacher_model
         ):  # checks again if teacher model is passed as parameter, in that case assume model distillation is used
             trainer = DistillationTrainer.create_or_load_checkpoint(
                 model=model,
@@ -342,33 +346,34 @@ class FARMReader(BaseReader):
 
         # 5. Let it grow!
         self.inferencer.model = trainer.train()
+        self._trainer = trainer
         self.save(Path(save_dir))
 
     def train(
-        self,
-        data_dir: str,
-        train_filename: str,
-        dev_filename: Optional[str] = None,
-        test_filename: Optional[str] = None,
-        use_gpu: Optional[bool] = None,
-        devices: List[torch.device] = [],
-        batch_size: int = 10,
-        n_epochs: int = 2,
-        learning_rate: float = 1e-5,
-        max_seq_len: Optional[int] = None,
-        warmup_proportion: float = 0.2,
-        dev_split: float = 0,
-        evaluate_every: int = 300,
-        save_dir: Optional[str] = None,
-        num_processes: Optional[int] = None,
-        use_amp: str = None,
-        checkpoint_root_dir: Path = Path("model_checkpoints"),
-        checkpoint_every: Optional[int] = None,
-        checkpoints_to_keep: int = 3,
-        caching: bool = False,
-        cache_path: Path = Path("cache/data_silo"),
-        grad_acc_steps: int = 1,
-        early_stopping: Optional[EarlyStopping] = None,
+            self,
+            data_dir: str,
+            train_filename: str,
+            dev_filename: Optional[str] = None,
+            test_filename: Optional[str] = None,
+            use_gpu: Optional[bool] = None,
+            devices: List[torch.device] = [],
+            batch_size: int = 10,
+            n_epochs: int = 2,
+            learning_rate: float = 1e-5,
+            max_seq_len: Optional[int] = None,
+            warmup_proportion: float = 0.2,
+            dev_split: float = 0,
+            evaluate_every: int = 300,
+            save_dir: Optional[str] = None,
+            num_processes: Optional[int] = None,
+            use_amp: str = None,
+            checkpoint_root_dir: Path = Path("model_checkpoints"),
+            checkpoint_every: Optional[int] = None,
+            checkpoints_to_keep: int = 3,
+            caching: bool = False,
+            cache_path: Path = Path("cache/data_silo"),
+            grad_acc_steps: int = 1,
+            early_stopping: Optional[EarlyStopping] = None,
     ):
         """
         Fine-tune a model on a QA dataset. Options:
@@ -450,35 +455,35 @@ class FARMReader(BaseReader):
         )
 
     def distil_prediction_layer_from(
-        self,
-        teacher_model: "FARMReader",
-        data_dir: str,
-        train_filename: str,
-        dev_filename: Optional[str] = None,
-        test_filename: Optional[str] = None,
-        use_gpu: Optional[bool] = None,
-        devices: List[torch.device] = [],
-        student_batch_size: int = 10,
-        teacher_batch_size: Optional[int] = None,
-        n_epochs: int = 2,
-        learning_rate: float = 3e-5,
-        max_seq_len: Optional[int] = None,
-        warmup_proportion: float = 0.2,
-        dev_split: float = 0,
-        evaluate_every: int = 300,
-        save_dir: Optional[str] = None,
-        num_processes: Optional[int] = None,
-        use_amp: str = None,
-        checkpoint_root_dir: Path = Path("model_checkpoints"),
-        checkpoint_every: Optional[int] = None,
-        checkpoints_to_keep: int = 3,
-        caching: bool = False,
-        cache_path: Path = Path("cache/data_silo"),
-        distillation_loss_weight: float = 0.5,
-        distillation_loss: Union[str, Callable[[torch.Tensor, torch.Tensor], torch.Tensor]] = "kl_div",
-        temperature: float = 1.0,
-        grad_acc_steps: int = 1,
-        early_stopping: Optional[EarlyStopping] = None,
+            self,
+            teacher_model: "FARMReader",
+            data_dir: str,
+            train_filename: str,
+            dev_filename: Optional[str] = None,
+            test_filename: Optional[str] = None,
+            use_gpu: Optional[bool] = None,
+            devices: List[torch.device] = [],
+            student_batch_size: int = 10,
+            teacher_batch_size: Optional[int] = None,
+            n_epochs: int = 2,
+            learning_rate: float = 3e-5,
+            max_seq_len: Optional[int] = None,
+            warmup_proportion: float = 0.2,
+            dev_split: float = 0,
+            evaluate_every: int = 300,
+            save_dir: Optional[str] = None,
+            num_processes: Optional[int] = None,
+            use_amp: str = None,
+            checkpoint_root_dir: Path = Path("model_checkpoints"),
+            checkpoint_every: Optional[int] = None,
+            checkpoints_to_keep: int = 3,
+            caching: bool = False,
+            cache_path: Path = Path("cache/data_silo"),
+            distillation_loss_weight: float = 0.5,
+            distillation_loss: Union[str, Callable[[torch.Tensor, torch.Tensor], torch.Tensor]] = "kl_div",
+            temperature: float = 1.0,
+            grad_acc_steps: int = 1,
+            early_stopping: Optional[EarlyStopping] = None,
     ):
         """
         Fine-tune a model on a QA dataset using logit-based distillation. You need to provide a teacher model that is already finetuned on the dataset
@@ -581,34 +586,34 @@ class FARMReader(BaseReader):
         )
 
     def distil_intermediate_layers_from(
-        self,
-        teacher_model: "FARMReader",
-        data_dir: str,
-        train_filename: str,
-        dev_filename: Optional[str] = None,
-        test_filename: Optional[str] = None,
-        use_gpu: Optional[bool] = None,
-        devices: List[torch.device] = [],
-        batch_size: int = 10,
-        n_epochs: int = 5,
-        learning_rate: float = 5e-5,
-        max_seq_len: Optional[int] = None,
-        warmup_proportion: float = 0.2,
-        dev_split: float = 0,
-        evaluate_every: int = 300,
-        save_dir: Optional[str] = None,
-        num_processes: Optional[int] = None,
-        use_amp: str = None,
-        checkpoint_root_dir: Path = Path("model_checkpoints"),
-        checkpoint_every: Optional[int] = None,
-        checkpoints_to_keep: int = 3,
-        caching: bool = False,
-        cache_path: Path = Path("cache/data_silo"),
-        distillation_loss: Union[str, Callable[[torch.Tensor, torch.Tensor], torch.Tensor]] = "mse",
-        temperature: float = 1.0,
-        processor: Optional[Processor] = None,
-        grad_acc_steps: int = 1,
-        early_stopping: Optional[EarlyStopping] = None,
+            self,
+            teacher_model: "FARMReader",
+            data_dir: str,
+            train_filename: str,
+            dev_filename: Optional[str] = None,
+            test_filename: Optional[str] = None,
+            use_gpu: Optional[bool] = None,
+            devices: List[torch.device] = [],
+            batch_size: int = 10,
+            n_epochs: int = 5,
+            learning_rate: float = 5e-5,
+            max_seq_len: Optional[int] = None,
+            warmup_proportion: float = 0.2,
+            dev_split: float = 0,
+            evaluate_every: int = 300,
+            save_dir: Optional[str] = None,
+            num_processes: Optional[int] = None,
+            use_amp: str = None,
+            checkpoint_root_dir: Path = Path("model_checkpoints"),
+            checkpoint_every: Optional[int] = None,
+            checkpoints_to_keep: int = 3,
+            caching: bool = False,
+            cache_path: Path = Path("cache/data_silo"),
+            distillation_loss: Union[str, Callable[[torch.Tensor, torch.Tensor], torch.Tensor]] = "mse",
+            temperature: float = 1.0,
+            processor: Optional[Processor] = None,
+            grad_acc_steps: int = 1,
+            early_stopping: Optional[EarlyStopping] = None,
     ):
         """
         The first stage of distillation finetuning as described in the TinyBERT paper:
@@ -704,12 +709,12 @@ class FARMReader(BaseReader):
         )
 
     def update_parameters(
-        self,
-        context_window_size: Optional[int] = None,
-        no_ans_boost: Optional[float] = None,
-        return_no_answer: Optional[bool] = None,
-        max_seq_len: Optional[int] = None,
-        doc_stride: Optional[int] = None,
+            self,
+            context_window_size: Optional[int] = None,
+            no_ans_boost: Optional[float] = None,
+            return_no_answer: Optional[bool] = None,
+            max_seq_len: Optional[int] = None,
+            doc_stride: Optional[int] = None,
     ):
         """
         Hot update parameters of a loaded Reader. It may not to be safe when processing concurrent requests.
@@ -737,7 +742,8 @@ class FARMReader(BaseReader):
         self.inferencer.processor.save(directory)
 
     def save_to_remote(
-        self, repo_id: str, private: Optional[bool] = None, commit_message: str = "Add new model to Hugging Face.", model_card: bool = True
+            self, repo_id: str, private: Optional[bool] = None, commit_message: str = "Add new model to Hugging Face.",
+            model_card: bool = True
     ):
         """
         Saves the Reader model to Hugging Face Model Hub with the given model_name. For this to work:
@@ -778,7 +784,7 @@ class FARMReader(BaseReader):
 
                     if os.path.getsize(file_path) > (5 * 1024 * 1024):
                         large_files.append(rel_path)
-                    
+
             if model_card:
                 create_model_card(self, repo_id, tmp_dir)
 
@@ -792,11 +798,11 @@ class FARMReader(BaseReader):
         return commit_url
 
     def predict_batch(
-        self,
-        queries: List[str],
-        documents: Union[List[Document], List[List[Document]]],
-        top_k: Optional[int] = None,
-        batch_size: Optional[int] = None,
+            self,
+            queries: List[str],
+            documents: Union[List[Document], List[List[Document]]],
+            top_k: Optional[int] = None,
+            batch_size: Optional[int] = None,
     ):
         """
         Use loaded QA model to find answers for the queries in the Documents.
@@ -853,7 +859,7 @@ class FARMReader(BaseReader):
             answers_per_query = int(len(results["answers"]) / len(queries))
             answers = []
             for i in range(0, len(results["answers"]), answers_per_query):
-                answer_group = results["answers"][i : i + answers_per_query]
+                answer_group = results["answers"][i: i + answers_per_query]
                 answers.append(answer_group)
             results["answers"] = answers
 
@@ -906,11 +912,11 @@ class FARMReader(BaseReader):
         return result
 
     def eval_on_file(
-        self,
-        data_dir: Union[Path, str],
-        test_filename: str,
-        device: Optional[Union[str, torch.device]] = None,
-        calibrate_conf_scores: bool = False,
+            self,
+            data_dir: Union[Path, str],
+            test_filename: str,
+            device: Optional[Union[str, torch.device]] = None,
+            calibrate_conf_scores: bool = False,
     ):
         """
         Performs evaluation on a SQuAD-formatted file.
@@ -980,13 +986,13 @@ class FARMReader(BaseReader):
         return results
 
     def eval(
-        self,
-        document_store: BaseDocumentStore,
-        device: Optional[Union[str, torch.device]] = None,
-        label_index: str = "label",
-        doc_index: str = "eval_document",
-        label_origin: str = "gold-label",
-        calibrate_conf_scores: bool = False,
+            self,
+            document_store: BaseDocumentStore,
+            device: Optional[Union[str, torch.device]] = None,
+            label_index: str = "label",
+            doc_index: str = "eval_document",
+            label_origin: str = "gold-label",
+            calibrate_conf_scores: bool = False,
     ):
         """
         Performs evaluation on evaluation documents in the DocumentStore.
@@ -1201,7 +1207,7 @@ class FARMReader(BaseReader):
         return answers, max_no_ans_gap
 
     def _preprocess_batch_queries_and_docs(
-        self, queries: List[str], documents: Union[List[Document], List[List[Document]]]
+            self, queries: List[str], documents: Union[List[Document], List[List[Document]]]
     ) -> Tuple[List[QAInput], List[int], bool]:
         # Convert input to FARM format
         inputs = []
@@ -1240,12 +1246,12 @@ class FARMReader(BaseReader):
         return inputs, number_of_docs, single_doc_list
 
     def calibrate_confidence_scores(
-        self,
-        document_store: BaseDocumentStore,
-        device: Optional[Union[str, torch.device]] = None,
-        label_index: str = "label",
-        doc_index: str = "eval_document",
-        label_origin: str = "gold_label",
+            self,
+            document_store: BaseDocumentStore,
+            device: Optional[Union[str, torch.device]] = None,
+            label_index: str = "label",
+            doc_index: str = "eval_document",
+            label_origin: str = "gold_label",
     ):
         """
         Calibrates confidence scores on evaluation documents in the DocumentStore.
@@ -1312,13 +1318,13 @@ class FARMReader(BaseReader):
 
     @classmethod
     def convert_to_onnx(
-        cls,
-        model_name: str,
-        output_path: Path,
-        convert_to_float16: bool = False,
-        quantize: bool = False,
-        task_type: str = "question_answering",
-        opset_version: int = 11,
+            cls,
+            model_name: str,
+            output_path: Path,
+            convert_to_float16: bool = False,
+            quantize: bool = False,
+            task_type: str = "question_answering",
+            opset_version: int = 11,
     ):
         """
         Convert a PyTorch BERT model to ONNX format and write to ./onnx-export dir. The converted ONNX model
