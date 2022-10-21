@@ -28,6 +28,7 @@ from haystack.schema import Document, Answer, Span
 from haystack.document_stores.base import BaseDocumentStore
 from haystack.nodes.reader.base import BaseReader
 from haystack.utils.early_stopping import EarlyStopping
+from haystack.utils.model_card import create_model_card
 
 
 logger = logging.getLogger(__name__)
@@ -736,7 +737,7 @@ class FARMReader(BaseReader):
         self.inferencer.processor.save(directory)
 
     def save_to_remote(
-        self, repo_id: str, private: Optional[bool] = None, commit_message: str = "Add new model to Hugging Face."
+        self, repo_id: str, private: Optional[bool] = None, commit_message: str = "Add new model to Hugging Face.", model_card: bool = True
     ):
         """
         Saves the Reader model to Hugging Face Model Hub with the given model_name. For this to work:
@@ -777,6 +778,9 @@ class FARMReader(BaseReader):
 
                     if os.path.getsize(file_path) > (5 * 1024 * 1024):
                         large_files.append(rel_path)
+                    
+            if model_card:
+                create_model_card(self, repo_id, tmp_dir)
 
             if len(large_files) > 0:
                 logger.info("Track files with git lfs: {}".format(", ".join(large_files)))
