@@ -76,7 +76,7 @@ class TableReader(BaseReader):
         top_k: int = 10,
         top_k_per_candidate: int = 3,
         return_no_answer: bool = False,
-        max_seq_len: int = 256,
+        max_seq_len: Optional[int] = None,
         use_auth_token: Optional[Union[str, bool]] = None,
         devices: Optional[List[Union[str, torch.device]]] = None,
     ):
@@ -110,7 +110,8 @@ class TableReader(BaseReader):
                                  (Only applicable with nq-reader models.)
         :param max_seq_len: Max sequence length of one input table for the model. If the number of tokens of
                             query + table exceed max_seq_len, the table will be truncated by removing rows until the
-                            input size fits the model.
+                            input size fits the model. If not provided the max length is automatically determined by the
+                            `model_max_length` variable of the tokenizer.
         :param use_auth_token:  The API token used to download private models from Huggingface.
                                 If this parameter is set to `True`, then the token generated when running
                                 `transformers-cli login` (stored in ~/.huggingface) will be used.
@@ -268,7 +269,7 @@ class _TapasEncoder:
         model_name_or_path: str = "google/tapas-base-finetuned-wtq",
         model_version: Optional[str] = None,
         tokenizer: Optional[str] = None,
-        max_seq_len: int = 256,
+        max_seq_len: Optional[int] = None,
         use_auth_token: Optional[Union[str, bool]] = None,
     ):
         self.model = TapasForQuestionAnswering.from_pretrained(
@@ -278,7 +279,7 @@ class _TapasEncoder:
             self.tokenizer = TapasTokenizer.from_pretrained(model_name_or_path, use_auth_token=use_auth_token)
         else:
             self.tokenizer = TapasTokenizer.from_pretrained(tokenizer, use_auth_token=use_auth_token)
-        self.max_seq_len = max_seq_len
+        self.max_seq_len = max_seq_len if max_seq_len is not None else self.tokenizer.model_max_length
         self.device = device
 
     @staticmethod
@@ -314,7 +315,12 @@ class _TapasEncoder:
     def _preprocess(self, query: str, table: pd.DataFrame) -> BatchEncoding:
         """Tokenize the query and table."""
         model_inputs = self.tokenizer(
-            table=table, queries=query, max_length=self.max_seq_len, return_tensors="pt", truncation=True
+            table=table,
+            queries=query,
+            max_length=self.max_seq_len,
+            return_tensors="pt",
+            truncation=True,
+            padding="max_length",
         )
         return model_inputs
 
@@ -477,7 +483,7 @@ class _TapasScoredEncoder:
         tokenizer: Optional[str] = None,
         top_k_per_candidate: int = 3,
         return_no_answer: bool = False,
-        max_seq_len: int = 256,
+        max_seq_len: Optional[int] = None,
         use_auth_token: Optional[Union[str, bool]] = None,
     ):
         self.model = self._TapasForScoredQA.from_pretrained(
@@ -487,7 +493,7 @@ class _TapasScoredEncoder:
             self.tokenizer = TapasTokenizer.from_pretrained(model_name_or_path, use_auth_token=use_auth_token)
         else:
             self.tokenizer = TapasTokenizer.from_pretrained(tokenizer, use_auth_token=use_auth_token)
-        self.max_seq_len = max_seq_len
+        self.max_seq_len = max_seq_len if max_seq_len is not None else self.tokenizer.model_max_length
         self.device = device
         self.top_k_per_candidate = top_k_per_candidate
         self.return_no_answer = return_no_answer
