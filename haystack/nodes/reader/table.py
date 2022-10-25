@@ -533,7 +533,9 @@ class _TapasScoredEncoder(_BaseTapasEncoder):
         self.top_k_per_candidate = top_k_per_candidate
         self.return_no_answer = return_no_answer
 
-    def _predict_tapas_scored(self, inputs: BatchEncoding, document: Document) -> Tuple[List[Answer], float]:
+    def _predict_tapas_scored(
+        self, inputs: BatchEncoding, document: Document, batch_size: int = 1
+    ) -> Tuple[List[Answer], float]:
         table: pd.DataFrame = document.content
 
         # Forward pass through model
