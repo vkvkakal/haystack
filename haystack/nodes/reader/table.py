@@ -174,9 +174,7 @@ class TableReader(BaseReader):
         self.max_seq_len = max_seq_len
         self.return_no_answer = return_no_answer
 
-    def predict(
-        self, query: str, documents: List[Document], top_k: Optional[int] = None, batch_size: Optional[int] = None
-    ) -> Dict:
+    def predict(self, query: str, documents: List[Document], top_k: Optional[int] = None) -> Dict:
         """
         Use loaded TableQA model to find answers for a query in the supplied list of Documents
         of content_type ``'table'``.
@@ -194,9 +192,7 @@ class TableReader(BaseReader):
         """
         if top_k is None:
             top_k = self.top_k
-        if batch_size is None:
-            batch_size = 1
-        return self.table_encoder.predict(query=query, documents=documents, top_k=top_k, batch_size=batch_size)
+        return self.table_encoder.predict(query=query, documents=documents, top_k=top_k, batch_size=1)
 
     def predict_batch(
         self,
@@ -229,7 +225,8 @@ class TableReader(BaseReader):
         :param top_k: The maximum number of answers to return per query.
         :param batch_size:
         """
-        results: Dict = {"queries": queries, "answers": []}
+        if top_k is None:
+            top_k = self.top_k
 
         if len(documents) > 0 and isinstance(documents[0], Document):
             single_doc_list = True
@@ -238,8 +235,9 @@ class TableReader(BaseReader):
 
         inputs = self._flatten_inputs(queries, documents)
 
-        for q, d in zip(inputs["queries"], inputs["docs"]):
-            preds = self.predict(query=q, documents=d, top_k=top_k, batch_size=batch_size)
+        results: Dict = {"queries": queries, "answers": []}
+        for query, docs in zip(inputs["queries"], inputs["docs"]):
+            preds = self.table_encoder.predict(query=query, documents=docs, top_k=top_k, batch_size=batch_size)
             results["answers"].append(preds["answers"])
 
         # Group answers by question in case of multiple queries and single doc list
@@ -349,6 +347,14 @@ class _TapasEncoder:
 
     def _preprocess(self, query: str, table: pd.DataFrame) -> BatchEncoding:
         """Tokenize the query and table."""
+        # TODO If number of rows in table is greater than max_row_id, they will be dropped by the tokenizer.
+        # max_row_id = self.tokenizer.max_row_id
+        # max_column_id = self.tokenizer.max_column_id
+        #
+        # TODO num_tokens measures max number of tokens in a single cell entry of the table
+        # tokenized_table = self.tokenizer._tokenize_table(table)
+        # _, _, num_tokens = self.tokenizer._get_table_boundaries(tokenized_table)
+
         model_inputs = self.tokenizer(
             table=table,
             queries=query,
