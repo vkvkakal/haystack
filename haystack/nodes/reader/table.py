@@ -9,8 +9,10 @@ except ImportError:
 import logging
 from statistics import mean
 import torch
+from torch.utils.data import Dataset, DataLoader
 import numpy as np
 import pandas as pd
+from tqdm import tqdm
 from quantulum3 import parser
 from transformers import (
     TapasTokenizer,
@@ -27,6 +29,7 @@ from haystack.errors import HaystackError
 from haystack.schema import Document, Answer, Span
 from haystack.nodes.reader.base import BaseReader
 from haystack.modeling.utils import initialize_device_settings
+from haystack.utils.torch_utils import ensure_tensor_on_device
 
 torch_scatter_installed = True
 torch_scatter_wrong_version = False
@@ -252,9 +255,8 @@ class TableReader(BaseReader):
 
         return results
 
-    def _flatten_inputs(
-        self, queries: List[str], documents: Union[List[Document], List[List[Document]]]
-    ) -> Dict[str, List]:
+    @staticmethod
+    def _flatten_inputs(queries: List[str], documents: Union[List[Document], List[List[Document]]]) -> Dict[str, List]:
         """Flatten (and copy) the queries and documents into lists of equal length.
 
         - If you provide a list containing a single query...
@@ -330,6 +332,19 @@ class _BaseTapasEncoder:
     @staticmethod
     def _preprocess(query: str, table: pd.DataFrame, tokenizer, max_seq_len) -> BatchEncoding:
         """Tokenize the query and table."""
+        model_inputs = tokenizer(
+            table=table,
+            queries=query,
+            max_length=max_seq_len,
+            return_tensors="pt",
+            truncation=True,
+            padding="max_length",
+        )
+        return model_inputs
+
+    @staticmethod
+    def _new_preprocess(query: List[str], table: List[pd.DataFrame], tokenizer, max_seq_len) -> BatchEncoding:
+        """Tokenize the query and table."""
         # TODO If number of rows in table is greater than max_row_id, they will be dropped by the tokenizer.
         # max_row_id = self.tokenizer.max_row_id
         # max_column_id = self.tokenizer.max_column_id
@@ -371,6 +386,55 @@ class _TapasEncoder(_BaseTapasEncoder):
             self.tokenizer = TapasTokenizer.from_pretrained(tokenizer, use_auth_token=use_auth_token)
         self.max_seq_len = max_seq_len if max_seq_len is not None else self.tokenizer.model_max_length
         self.device = device
+
+    def _postprocess_tapas(self, outputs, inputs: BatchEncoding, document: Document) -> Answer:
+        table: pd.DataFrame = document.content
+        inputs.to("cpu")
+        outputs_logits = outputs.logits.cpu()
+
+        if self.model.config.num_aggregation_labels > 0:
+            aggregation_logits = outputs.logits_aggregation.cpu()
+            predicted_answer_coordinates, predicted_aggregation_indices = self.tokenizer.convert_logits_to_predictions(
+                inputs, outputs_logits, logits_agg=aggregation_logits, cell_classification_threshold=0.5
+            )
+        else:
+            predicted_answer_coordinates = self.tokenizer.convert_logits_to_predictions(
+                inputs, outputs_logits, logits_agg=None, cell_classification_threshold=0.5
+            )
+
+        # Get cell values
+        current_answer_coordinates = predicted_answer_coordinates[0]
+        current_answer_cells = []
+        for coordinate in current_answer_coordinates:
+            current_answer_cells.append(table.iat[coordinate])
+
+        # Get aggregation operator
+        if self.model.config.aggregation_labels is not None:
+            current_aggregation_operator = self.model.config.aggregation_labels[predicted_aggregation_indices[0]]
+        else:
+            current_aggregation_operator = "NONE"
+
+        # Calculate answer score
+        current_score = self._calculate_answer_score(outputs_logits, inputs, current_answer_coordinates)
+
+        if current_aggregation_operator == "NONE":
+            answer_str = ", ".join(current_answer_cells)
+        else:
+            answer_str = self._aggregate_answers(current_aggregation_operator, current_answer_cells)
+
+        answer_offsets = self._calculate_answer_offsets(current_answer_coordinates, table)
+
+        answer = Answer(
+            answer=answer_str,
+            type="extractive",
+            score=current_score,
+            context=table,
+            offsets_in_document=answer_offsets,
+            offsets_in_context=answer_offsets,
+            document_id=document.id,
+            meta={"aggregation_operator": current_aggregation_operator, "answer_cells": current_answer_cells},
+        )
+        return answer
 
     def _predict_tapas(self, inputs: BatchEncoding, document: Document, batch_size: int = 1) -> Answer:
         table: pd.DataFrame = document.content
@@ -506,6 +570,40 @@ class _TapasEncoder(_BaseTapasEncoder):
 
         answers = sorted(answers, reverse=True)
         results = {"query": query, "answers": answers[:top_k]}
+        return results
+
+    def new_predict(self, queries: List[str], documents: List[List[Document]], top_k: int, batch_size: int = 1) -> Dict:
+        assert len(queries) == len(documents), "Length of queries and documents needs to be the same"
+
+        table_documents = self._check_documents(documents)
+        tables = [t.content for t in table_documents]
+
+        all_queries = []
+        for i, d in enumerate(table_documents):
+            all_queries[i] = [queries[i] for _ in range(len(d))]
+
+        data = {"queries": all_queries, "tables": tables}
+
+        # Setup up Pytorch Dataloader
+        dataset = TableDataset(data, self.tokenizer)
+        dataloader = DataLoader(dataset, shuffle=False, batch_size=batch_size, num_workers=0)
+
+        predictions = []
+        inputs = []
+        for batch in tqdm(dataloader, disable=False, total=len(dataloader), desc="Processing Tables"):
+            batch = ensure_tensor_on_device(batch, device=self.device)
+            with torch.no_grad():
+                model_outputs = self.model(**batch)
+            model_outputs = ensure_tensor_on_device(model_outputs, device=torch.device("cpu"))
+            predictions.append(model_outputs)
+            inputs.append(batch)
+
+        # TODO Flatten predictions and inputs
+        answers = self._postprocess_tapas(predictions, inputs, table_documents)
+
+        # TODO Put sort into _postprocess_tapas
+        answers = sorted(answers, reverse=True)
+        results = {"queries": queries, "answers": answers[:top_k]}
         return results
 
 
@@ -683,6 +781,25 @@ class _TapasScoredEncoder(_BaseTapasEncoder):
 
             # Initialize weights
             self.init_weights()
+
+
+class TableDataset(torch.utils.data.Dataset):
+    def __init__(self, data, tokenizer):
+        self.data = data
+        self.tokenizer = tokenizer
+
+    def __getitem__(self, idx):
+        question = self.data["queries"][idx]
+        table = self.data["tables"][idx]
+        encoding = self.tokenizer(
+            table=table, queries=question, truncation=True, padding="max_length", return_tensors="pt"
+        )
+        # remove the batch dimension which the tokenizer adds by default
+        encoding = {key: val.squeeze(0) for key, val in encoding.items()}
+        return encoding
+
+    def __len__(self):
+        return len(self.data)
 
 
 class RCIReader(BaseReader):
