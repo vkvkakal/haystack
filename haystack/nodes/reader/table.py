@@ -1,3 +1,4 @@
+from abc import abstractmethod
 from typing import List, Optional, Tuple, Dict, Union
 
 try:
@@ -295,7 +296,63 @@ class TableReader(BaseReader):
         return inputs
 
 
-class _TapasEncoder:
+class _BaseTapasEncoder:
+    @staticmethod
+    def _calculate_answer_offsets(answer_coordinates: List[Tuple[int, int]], table: pd.DataFrame) -> List[Span]:
+        """
+        Calculates the answer cell offsets of the linearized table based on the answer cell coordinates.
+        """
+        answer_offsets = []
+        n_rows, n_columns = table.shape
+        for coord in answer_coordinates:
+            answer_cell_offset = (coord[0] * n_columns) + coord[1]
+            answer_offsets.append(Span(start=answer_cell_offset, end=answer_cell_offset + 1))
+        return answer_offsets
+
+    @staticmethod
+    def _check_documents(documents: List[Document]) -> List[Document]:
+        table_documents = []
+        for document in documents:
+            if document.content_type != "table":
+                logger.warning("Skipping document with id '%s' in TableReader as it is not of type table.", document.id)
+                continue
+
+            table: pd.DataFrame = document.content
+            if table.shape[0] == 0:
+                logger.warning(
+                    "Skipping document with id '%s' in TableReader as it does not contain any rows.", document.id
+                )
+                continue
+
+            table_documents.append(document)
+        return table_documents
+
+    @staticmethod
+    def _preprocess(query: str, table: pd.DataFrame, tokenizer, max_seq_len) -> BatchEncoding:
+        """Tokenize the query and table."""
+        # TODO If number of rows in table is greater than max_row_id, they will be dropped by the tokenizer.
+        # max_row_id = self.tokenizer.max_row_id
+        # max_column_id = self.tokenizer.max_column_id
+        #
+        # TODO num_tokens measures max number of tokens in a single cell entry of the table
+        # tokenized_table = self.tokenizer._tokenize_table(table)
+        # _, _, num_tokens = self.tokenizer._get_table_boundaries(tokenized_table)
+        model_inputs = tokenizer(
+            table=table,
+            queries=query,
+            max_length=max_seq_len,
+            return_tensors="pt",
+            truncation=True,
+            padding="max_length",
+        )
+        return model_inputs
+
+    @abstractmethod
+    def predict(self, query: str, documents: List[Document], top_k: int) -> Dict:
+        pass
+
+
+class _TapasEncoder(_BaseTapasEncoder):
     def __init__(
         self,
         device: torch.device,
@@ -314,68 +371,6 @@ class _TapasEncoder:
             self.tokenizer = TapasTokenizer.from_pretrained(tokenizer, use_auth_token=use_auth_token)
         self.max_seq_len = max_seq_len if max_seq_len is not None else self.tokenizer.model_max_length
         self.device = device
-
-    @staticmethod
-    def _calculate_answer_offsets(answer_coordinates: List[Tuple[int, int]], table: pd.DataFrame) -> List[Span]:
-        """
-        Calculates the answer cell offsets of the linearized table based on the answer cell coordinates.
-        """
-        answer_offsets = []
-        n_rows, n_columns = table.shape
-        for coord in answer_coordinates:
-            answer_cell_offset = (coord[0] * n_columns) + coord[1]
-            answer_offsets.append(Span(start=answer_cell_offset, end=answer_cell_offset + 1))
-        return answer_offsets
-
-    @staticmethod
-    def _check_documents(documents):
-        table_documents = []
-        for document in documents:
-            if document.content_type != "table":
-                logger.warning("Skipping document with id '%s' in TableReader as it is not of type table.", document.id)
-                continue
-
-            table: pd.DataFrame = document.content
-            if table.shape[0] == 0:
-                logger.warning(
-                    "Skipping document with id '%s' in TableReader as it does not contain any rows.", document.id
-                )
-                continue
-
-            table_documents.append(document)
-        return table_documents
-
-    def _preprocess(self, query: str, table: pd.DataFrame) -> BatchEncoding:
-        """Tokenize the query and table."""
-        # TODO If number of rows in table is greater than max_row_id, they will be dropped by the tokenizer.
-        # max_row_id = self.tokenizer.max_row_id
-        # max_column_id = self.tokenizer.max_column_id
-        #
-        # TODO num_tokens measures max number of tokens in a single cell entry of the table
-        # tokenized_table = self.tokenizer._tokenize_table(table)
-        # _, _, num_tokens = self.tokenizer._get_table_boundaries(tokenized_table)
-
-        model_inputs = self.tokenizer(
-            table=table,
-            queries=query,
-            max_length=self.max_seq_len,
-            return_tensors="pt",
-            truncation=True,
-            padding="max_length",
-        )
-        return model_inputs
-
-    @staticmethod
-    def _postprocess(pre_answers: List[Answer], top_k: int):
-        """Postprocess the answers by sorting them by score and returning the `top_k` amount.
-
-        :param pre_answers: List of answers to be postprocessed.
-        :param top_k: The maximum number of answers to return
-        """
-        answers = pre_answers
-        answers = sorted(answers, reverse=True)
-        answers = answers[:top_k]
-        return answers
 
     def _predict_tapas(self, inputs: BatchEncoding, document: Document, batch_size: int = 1) -> Answer:
         table: pd.DataFrame = document.content
@@ -429,7 +424,6 @@ class _TapasEncoder:
             document_id=document.id,
             meta={"aggregation_operator": current_aggregation_operator, "answer_cells": current_answer_cells},
         )
-
         return answer
 
     def _calculate_answer_score(
@@ -504,18 +498,18 @@ class _TapasEncoder:
         table_documents = self._check_documents(documents)
         for document in table_documents:
             table: pd.DataFrame = document.content
-            model_inputs = self._preprocess(query, table)
+            model_inputs = self._preprocess(query, table, self.tokenizer, self.max_seq_len)
             model_inputs.to(self.device)
 
             current_answer = self._predict_tapas(model_inputs, document, batch_size)
             answers.append(current_answer)
 
-        answers = self._postprocess(answers, top_k)
-        results = {"query": query, "answers": answers}
+        answers = sorted(answers, reverse=True)
+        results = {"query": query, "answers": answers[:top_k]}
         return results
 
 
-class _TapasScoredEncoder:
+class _TapasScoredEncoder(_BaseTapasEncoder):
     def __init__(
         self,
         device: torch.device,
@@ -539,76 +533,7 @@ class _TapasScoredEncoder:
         self.top_k_per_candidate = top_k_per_candidate
         self.return_no_answer = return_no_answer
 
-    @staticmethod
-    def _calculate_answer_offsets(answer_coordinates: List[Tuple[int, int]], table: pd.DataFrame) -> List[Span]:
-        """
-        Calculates the answer cell offsets of the linearized table based on the answer cell coordinates.
-        """
-        answer_offsets = []
-        n_rows, n_columns = table.shape
-        for coord in answer_coordinates:
-            answer_cell_offset = (coord[0] * n_columns) + coord[1]
-            answer_offsets.append(Span(start=answer_cell_offset, end=answer_cell_offset + 1))
-        return answer_offsets
-
-    @staticmethod
-    def _check_documents(documents):
-        table_documents = []
-        for document in documents:
-            if document.content_type != "table":
-                logger.warning("Skipping document with id '%s' in TableReader as it is not of type table.", document.id)
-                continue
-
-            table: pd.DataFrame = document.content
-            if table.shape[0] == 0:
-                logger.warning(
-                    "Skipping document with id '%s' in TableReader as it does not contain any rows.", document.id
-                )
-                continue
-
-            table_documents.append(document)
-        return table_documents
-
-    def _preprocess(self, query: str, table: pd.DataFrame) -> BatchEncoding:
-        """Tokenize the query and table."""
-        model_inputs = self.tokenizer(
-            table=table,
-            queries=query,
-            max_length=self.max_seq_len,
-            return_tensors="pt",
-            truncation=True,
-            padding="max_length",
-        )
-        return model_inputs
-
-    def _postprocess(self, pre_answers: List[Answer], top_k: int, no_answer_score: float):
-        """Postprocess the answers by sorting them by score and returning the `top_k` amount.
-
-        :param pre_answers: List of answers to be postprocessed.
-        :param top_k: The maximum number of answers to return
-        :param no_answer_score: The reader score of the no answer prediction.
-        """
-        answers = pre_answers
-        if self.return_no_answer:
-            answers.append(
-                Answer(
-                    answer="",
-                    type="extractive",
-                    score=no_answer_score,
-                    context=None,
-                    offsets_in_context=[Span(start=0, end=0)],
-                    offsets_in_document=[Span(start=0, end=0)],
-                    document_id=None,
-                    meta=None,
-                )
-            )
-        answers = sorted(answers, reverse=True)
-        answers = answers[:top_k]
-        return answers
-
-    def _predict_tapas_scored(
-        self, inputs: BatchEncoding, document: Document, batch_size: int = 1
-    ) -> Tuple[List[Answer], float]:
+    def _predict_tapas_scored(self, inputs: BatchEncoding, document: Document) -> Tuple[List[Answer], float]:
         table: pd.DataFrame = document.content
 
         # Forward pass through model
@@ -711,7 +636,7 @@ class _TapasScoredEncoder:
         table_documents = self._check_documents(documents)
         for document in table_documents:
             table: pd.DataFrame = document.content
-            model_inputs = self._preprocess(query, table)
+            model_inputs = self._preprocess(query, table, self.tokenizer, self.max_seq_len)
             model_inputs.to(self.device)
 
             current_answers, current_no_answer_score = self._predict_tapas_scored(model_inputs, document, batch_size)
@@ -719,9 +644,22 @@ class _TapasScoredEncoder:
             if current_no_answer_score < no_answer_score:
                 no_answer_score = current_no_answer_score
 
-        answers = self._postprocess(answers, top_k, no_answer_score)
-        results = {"query": query, "answers": answers}
+        if self.return_no_answer:
+            answers.append(
+                Answer(
+                    answer="",
+                    type="extractive",
+                    score=no_answer_score,
+                    context=None,
+                    offsets_in_context=[Span(start=0, end=0)],
+                    offsets_in_document=[Span(start=0, end=0)],
+                    document_id=None,
+                    meta=None,
+                )
+            )
 
+        answers = sorted(answers, reverse=True)
+        results = {"query": query, "answers": answers[:top_k]}
         return results
 
     class _TapasForScoredQA(TapasPreTrainedModel):
