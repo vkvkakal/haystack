@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from typing import List, Optional, Tuple, Dict, Union
+from typing import List, Optional, Tuple, Dict, Union, Any
 
 try:
     from typing import Literal
@@ -237,6 +237,7 @@ class TableReader(BaseReader):
         else:
             single_doc_list = False
 
+        # TODO Add self._check_documents here
         inputs = self._flatten_inputs(queries, documents)
 
         results: Dict = {"queries": queries, "answers": []}
@@ -387,20 +388,12 @@ class _TapasEncoder(_BaseTapasEncoder):
         self.max_seq_len = max_seq_len if max_seq_len is not None else self.tokenizer.model_max_length
         self.device = device
 
-    def _postprocess_tapas(self, outputs, inputs: BatchEncoding, document: Document) -> Answer:
-        table: pd.DataFrame = document.content
-        inputs.to("cpu")
-        outputs_logits = outputs.logits.cpu()
+    def _postprocess_tapas(self, predictions: Dict, documents: List[Document]) -> Answer:
 
-        if self.model.config.num_aggregation_labels > 0:
-            aggregation_logits = outputs.logits_aggregation.cpu()
-            predicted_answer_coordinates, predicted_aggregation_indices = self.tokenizer.convert_logits_to_predictions(
-                inputs, outputs_logits, logits_agg=aggregation_logits, cell_classification_threshold=0.5
-            )
-        else:
-            predicted_answer_coordinates = self.tokenizer.convert_logits_to_predictions(
-                inputs, outputs_logits, logits_agg=None, cell_classification_threshold=0.5
-            )
+        table: pd.DataFrame = documents[0].content
+        predicted_answer_coordinates = predictions["predicted_answer_coordinates"][0]
+        predicted_aggregation_indices = predictions["predicted_aggregation_indices"][0]
+        current_score = predictions["answer_scores"][0]
 
         # Get cell values
         current_answer_coordinates = predicted_answer_coordinates[0]
@@ -413,9 +406,6 @@ class _TapasEncoder(_BaseTapasEncoder):
             current_aggregation_operator = self.model.config.aggregation_labels[predicted_aggregation_indices[0]]
         else:
             current_aggregation_operator = "NONE"
-
-        # Calculate answer score
-        current_score = self._calculate_answer_score(outputs_logits, inputs, current_answer_coordinates)
 
         if current_aggregation_operator == "NONE":
             answer_str = ", ".join(current_answer_cells)
@@ -431,7 +421,7 @@ class _TapasEncoder(_BaseTapasEncoder):
             context=table,
             offsets_in_document=answer_offsets,
             offsets_in_context=answer_offsets,
-            document_id=document.id,
+            document_id=documents[0].id,
             meta={"aggregation_operator": current_aggregation_operator, "answer_cells": current_answer_cells},
         )
         return answer
@@ -489,6 +479,43 @@ class _TapasEncoder(_BaseTapasEncoder):
             meta={"aggregation_operator": current_aggregation_operator, "answer_cells": current_answer_cells},
         )
         return answer
+
+    def _new_calculate_answer_score(
+        self, logits: torch.Tensor, inputs: Dict, answer_coordinates: List[List[Tuple[int, int]]]
+    ) -> List[np.float64]:
+        # Calculate answer score
+        # Values over 88.72284 will overflow when passed through exponential, so logits are truncated.
+        logits[logits < -88.7] = -88.7
+        token_probabilities = 1 / (1 + np.exp(-logits)) * inputs["attention_mask"]
+        token_types = [
+            "segment_ids",
+            "column_ids",
+            "row_ids",
+            "prev_labels",
+            "column_ranks",
+            "inv_column_ranks",
+            "numeric_relations",
+        ]
+
+        segment_ids = inputs["token_type_ids"][:, :, token_types.index("segment_ids")]
+        row_ids = inputs["token_type_ids"][:, :, token_types.index("row_ids")]
+        column_ids = inputs["token_type_ids"][:, :, token_types.index("column_ids")]
+
+        answer_scores = []
+        num_batch = logits.shape[0]
+        assert (
+            num_batch == len(answer_coordinates) == inputs["input_ids"].shape[0]
+        ), "Ensure all inputs have same batch dimension"
+        for i in range(num_batch):
+            cell_coords_to_prob = self.tokenizer._get_mean_cell_probs(
+                token_probabilities[i].tolist(), segment_ids[i].tolist(), row_ids[i].tolist(), column_ids[i].tolist()
+            )
+            # _get_mean_cell_probs seems to index cells by (col, row). DataFrames are, however, indexed by (row, col).
+            all_cell_probabilities = {(row, col): prob for (col, row), prob in cell_coords_to_prob.items()}
+            answer_cell_probabilities = [all_cell_probabilities[coord] for coord in answer_coordinates[i]]
+            answer_scores.append(np.mean(answer_cell_probabilities))
+
+        return answer_scores
 
     def _calculate_answer_score(
         self, logits: torch.Tensor, inputs: BatchEncoding, answer_coordinates: List[Tuple[int, int]]
@@ -572,39 +599,72 @@ class _TapasEncoder(_BaseTapasEncoder):
         results = {"query": query, "answers": answers[:top_k]}
         return results
 
+    def _forward(self, batch):
+        outputs = {}
+        model_outputs = self.model(**batch)
+        if self.model.config.num_aggregation_labels > 0:
+            aggregation_logits = model_outputs["logits_aggregation"]
+            predicted_answer_coordinates, predicted_aggregation_indices = self.tokenizer.convert_logits_to_predictions(
+                batch, model_outputs["logits"], logits_agg=aggregation_logits, cell_classification_threshold=0.5
+            )
+            outputs["predicted_answer_coordinates"] = predicted_answer_coordinates
+            outputs["predicted_aggregation_indices"] = predicted_aggregation_indices
+        else:
+            predicted_answer_coordinates = self.tokenizer.convert_logits_to_predictions(
+                batch, model_outputs["logits"], logits_agg=None, cell_classification_threshold=0.5
+            )
+            outputs["predicted_answer_coordinates"] = predicted_answer_coordinates
+            outputs["predicted_aggregation_indices"] = None
+        answer_scores = self._new_calculate_answer_score(model_outputs["logits"], batch, predicted_answer_coordinates)
+        outputs["answer_scores"] = answer_scores
+        return outputs
+
     def new_predict(self, queries: List[str], documents: List[List[Document]], top_k: int, batch_size: int = 1) -> Dict:
+
         assert len(queries) == len(documents), "Length of queries and documents needs to be the same"
 
-        table_documents = self._check_documents(documents)
-        tables = [t.content for t in table_documents]
-
         all_queries = []
-        for i, d in enumerate(table_documents):
-            all_queries[i] = [queries[i] for _ in range(len(d))]
+        all_docs = []
+        for i, query in enumerate(queries):
+            for j, doc in enumerate(documents[i]):
+                all_queries.append(query)
+                all_docs.append(doc)
 
-        data = {"queries": all_queries, "tables": tables}
+        data = {"queries": all_queries, "table_documents": all_docs}
 
         # Setup up Pytorch Dataloader
         dataset = TableDataset(data, self.tokenizer)
         dataloader = DataLoader(dataset, shuffle=False, batch_size=batch_size, num_workers=0)
 
         predictions = []
-        inputs = []
         for batch in tqdm(dataloader, disable=False, total=len(dataloader), desc="Processing Tables"):
             batch = ensure_tensor_on_device(batch, device=self.device)
             with torch.no_grad():
-                model_outputs = self.model(**batch)
-            model_outputs = ensure_tensor_on_device(model_outputs, device=torch.device("cpu"))
+                model_outputs = self._forward(batch)
             predictions.append(model_outputs)
-            inputs.append(batch)
 
-        # TODO Flatten predictions and inputs
-        answers = self._postprocess_tapas(predictions, inputs, table_documents)
+        predictions = self._flatten_predictions(predictions)
+        import pdb
+
+        pdb.set_trace()
+        answers = self._postprocess_tapas(predictions, all_docs)
 
         # TODO Put sort into _postprocess_tapas
         answers = sorted(answers, reverse=True)
         results = {"queries": queries, "answers": answers[:top_k]}
         return results
+
+    def _flatten_predictions(self, predictions):
+        flattened_predictions: Dict[str, Any] = {
+            "predicted_answer_coordinates": [],
+            "predicted_aggregation_indices": [],
+            "answer_scores": [],
+        }
+        for pred in predictions:
+            flattened_predictions["predicted_answer_coordinates"].extend(pred["predicted_answer_coordinates"])
+            flattened_predictions["predicted_aggregation_indices"].extend(pred["predicted_aggregation_indices"])
+            flattened_predictions["answer_scores"].extend(pred["answer_scores"])
+        return flattened_predictions
 
 
 class _TapasScoredEncoder(_BaseTapasEncoder):
@@ -790,7 +850,7 @@ class TableDataset(torch.utils.data.Dataset):
 
     def __getitem__(self, idx):
         question = self.data["queries"][idx]
-        table = self.data["tables"][idx]
+        table = self.data["table_documents"][idx].content
         encoding = self.tokenizer(
             table=table, queries=question, truncation=True, padding="max_length", return_tensors="pt"
         )
@@ -799,7 +859,7 @@ class TableDataset(torch.utils.data.Dataset):
         return encoding
 
     def __len__(self):
-        return len(self.data)
+        return len(self.data["queries"])
 
 
 class RCIReader(BaseReader):
