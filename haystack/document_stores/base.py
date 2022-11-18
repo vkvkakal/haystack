@@ -318,8 +318,14 @@ class BaseDocumentStore(BaseComponent):
         if len(emb.shape) == 1:
             BaseDocumentStore._normalize_embedding_1D(emb)
         # 2D matrix
-        else:
+        elif len(emb.shape) == 2:
             BaseDocumentStore._normalize_embedding_2D(emb)
+        # 3D tensor
+        elif len(emb.shape) == 3:
+            BaseDocumentStore._normalize_embedding_3D(emb)
+        else:
+            raise ValueError("Embedding array must be 1D, 2D or 3D")
+
 
     @staticmethod
     @njit  # (fastmath=True)
@@ -336,6 +342,16 @@ class BaseDocumentStore(BaseComponent):
             norm = np.sqrt(vec.dot(vec))
             if norm != 0.0:
                 vec /= norm
+
+    @staticmethod
+    @njit  # (fastmath=True)
+    def _normalize_embedding_3D(emb: np.ndarray) -> None:
+        for mat in emb:
+            for vec in mat:
+                vec = np.ascontiguousarray(vec)
+                norm = np.sqrt(vec.dot(vec))
+                if norm != 0.0:
+                    vec /= norm
 
     def scale_to_unit_interval(self, score: float, similarity: Optional[str]) -> float:
         if similarity == "cosine":
@@ -703,7 +719,10 @@ class BaseDocumentStore(BaseComponent):
         :param num_documents: Number of documents the embeddings were generated for
         :param embedding_dim: Number of embedding dimensions to expect
         """
-        num_embeddings, embedding_size = embeddings.shape
+        if len(embeddings.shape) == 2:
+            num_embeddings, embedding_size = embeddings.shape
+        elif len(embeddings.shape) == 3:
+            num_embeddings, tokens, embedding_size = embeddings.shape
         if num_embeddings != num_documents:
             raise DocumentStoreError(
                 "The number of embeddings does not match the number of documents: "

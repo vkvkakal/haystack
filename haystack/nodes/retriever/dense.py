@@ -1,4 +1,5 @@
 from abc import abstractmethod
+from collections import defaultdict
 from typing import List, Dict, Union, Optional, Any
 
 import logging
@@ -1666,9 +1667,24 @@ class EmbeddingRetriever(DenseRetriever):
         if scale_score is None:
             scale_score = self.scale_score
         query_emb = self.embed_queries(queries=[query])
-        documents = document_store.query_by_embedding(
-            query_emb=query_emb[0], filters=filters, top_k=top_k, index=index, headers=headers, scale_score=scale_score
-        )
+        query_emb = query_emb[0]
+        if len(query_emb.shape) == 1:
+            documents = document_store.query_by_embedding(
+                query_emb=query_emb, filters=filters, top_k=top_k, index=index, headers=headers, scale_score=scale_score
+            )
+        if len(query_emb.shape) == 2:
+            documents = document_store.query_by_embedding_batch(  # type: ignore
+                query_embs=query_emb, filters=filters, top_k=top_k, index=index, headers=headers, scale_score=scale_score, collapse_by_name_field=True
+            )
+            all_docs = [doc for docs in documents for doc in docs]
+            id_to_doc = {doc.id: doc for doc in all_docs}
+            id_to_score = defaultdict(float)
+            for doc in all_docs:
+                id_to_score[doc.id] += doc.score
+            for doc in id_to_doc.values():
+                doc.score = id_to_score[doc.id]
+            documents = list(sorted(id_to_doc.values(), key=lambda x: x.score, reverse=True))
+            # aggregate the searches by summing up scores by document
         return documents
 
     def retrieve_batch(

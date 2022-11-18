@@ -351,6 +351,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
         return_embedding: Optional[bool] = None,
         headers: Optional[Dict[str, str]] = None,
         scale_score: bool = True,
+        collapse_by_name_field: Optional[bool] = False,
     ) -> List[Document]:
         """
         Find the document that is most similar to the provided `query_emb` by using a vector similarity metric.
@@ -438,7 +439,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
         if not self.embedding_field:
             raise DocumentStoreError("Please set a valid `embedding_field` for OpenSearchDocumentStore")
         body = self._construct_dense_query_body(
-            query_emb=query_emb, filters=filters, top_k=top_k, return_embedding=return_embedding
+            query_emb=query_emb, filters=filters, top_k=top_k, return_embedding=return_embedding, collapse_by_name_field=collapse_by_name_field
         )
 
         logger.debug("Retriever query: %s", body)
@@ -458,6 +459,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
         filters: Optional[Dict[str, Union[Dict, List, str, int, float, bool]]] = None,
         top_k: int = 10,
         return_embedding: Optional[bool] = None,
+        collapse_by_name_field: Optional[bool] = False,
     ):
         body: Dict[str, Any] = {"size": top_k, "query": self._get_vector_similarity_query(query_emb, top_k)}
         if filters:
@@ -481,6 +483,10 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
 
         if excluded_meta_data:
             body["_source"] = {"excludes": excluded_meta_data}
+
+        if collapse_by_name_field:
+            body["collapse"] = {"field": self.name_field}
+
         return body
 
     def query_by_embedding_batch(
@@ -497,6 +503,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
         return_embedding: Optional[bool] = None,
         headers: Optional[Dict[str, str]] = None,
         scale_score: bool = True,
+        collapse_by_name_field: Optional[bool] = False,
     ) -> List[List[Document]]:
         """
         Find the documents that are most similar to the provided `query_embs` by using a vector similarity metric.
@@ -599,7 +606,7 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
         body = []
         for query_emb, cur_filters in zip(query_embs, filters):
             cur_query_body = self._construct_dense_query_body(
-                query_emb=query_emb, filters=cur_filters, top_k=top_k, return_embedding=return_embedding
+                query_emb=query_emb, filters=cur_filters, top_k=top_k, return_embedding=return_embedding, collapse_by_name_field=collapse_by_name_field
             )
             body.append(headers)
             body.append(cur_query_body)
@@ -607,10 +614,22 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
         logger.debug("Retriever query: %s", body)
         responses = self.client.msearch(index=index, body=body)
 
+        name_to_hit = {}
+        if collapse_by_name_field:
+            names = [doc["_source"][self.name_field] for response in responses["responses"] for doc in response["hits"]["hits"]]
+            hits = list(self._get_all_documents_in_index(filters={self.name_field: names, "_embedding_doc": {"$not": {"$eq": True}}}, index=index, headers=headers))
+            for hit in hits:
+                del hit["_score"]
+            name_to_hit = {hit["_source"][self.name_field]: hit for hit in hits}
+
         all_documents = []
         cur_documents = []
         for response in responses["responses"]:
             cur_result = response["hits"]["hits"]
+            if collapse_by_name_field:
+                for hit in cur_result:
+                    hit.update(name_to_hit[hit["_source"][self.name_field]])
+
             cur_documents = [
                 self._convert_es_hit_to_document(
                     hit, adapt_score_for_embedding=True, return_embedding=self.return_embedding, scale_score=scale_score

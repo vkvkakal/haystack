@@ -401,9 +401,28 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
             }  # type: Dict[str, Any]
 
             # cast embedding type as ES cannot deal with np.array
-            if _doc[self.embedding_field] is not None:
-                if type(_doc[self.embedding_field]) == np.ndarray:
-                    _doc[self.embedding_field] = _doc[self.embedding_field].tolist()
+            embedding = _doc[self.embedding_field]
+            if embedding is not None:
+                if type(embedding) == np.ndarray:
+                    if len(embedding.shape) == 1:
+                        _doc[self.embedding_field] = embedding.tolist()
+                    elif len(embedding.shape) == 2:
+                        _doc[self.embedding_field] = embedding[0].tolist()
+                        for idx, emb in enumerate(embedding[1:]):
+                            documents_to_index.append({
+                                "_op_type": "index" if duplicate_documents == "overwrite" else "create",
+                                "_index": index,
+                                "_id": f"{_doc['_id']}_emb_{idx+1}",
+                                self.name_field: _doc[self.name_field],
+                                self.embedding_field: emb.tolist(),
+                                "_parent": _doc['_id'],
+                                "_embedding_doc": True,
+                            })
+                    else:
+                        raise ValueError(
+                            f"Embedding dimension of {embedding.shape} is not supported. "
+                            f"Supported dimensions are 1 and 2."
+                        )
 
             # rename id for elastic
             _doc["_id"] = str(_doc.pop("id"))
@@ -1223,11 +1242,32 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
 
                 doc_updates = []
                 for doc, emb in zip(document_batch, embeddings):
+
+                    if len(emb.shape) == 1:
+                        doc_update = {self.embedding_field: emb.tolist()}
+                    # multiple embeddings per document
+                    elif len(emb.shape) == 2:
+                        doc_update = {self.embedding_field: emb[0].tolist()}
+                        for idx, emb_i in enumerate(emb[1:]):
+                            # empty ones are just paddings from colbert
+                            if emb_i.any():
+                                doc_updates.append({
+                                    "_op_type": "index",
+                                    "_index": index,
+                                    "_id": f"{doc.id}_emb_{idx+1}",
+                                    self.name_field: doc.meta[self.name_field],
+                                    self.embedding_field: emb_i.tolist(),
+                                    "_parent": doc.id,
+                                    "_embedding_doc": True
+                                })
+                    else:
+                        raise ValueError(f"Embedding has unexpected shape {emb.shape}")
+
                     update = {
                         "_op_type": "update",
                         "_index": index,
                         "_id": doc.id,
-                        "doc": {self.embedding_field: emb.tolist()},
+                        "doc": doc_update,
                     }
                     doc_updates.append(update)
 
@@ -1241,7 +1281,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         :param retriever: Retriever to use for embedding.
         :return: embeddings of documents.
         """
-        embeddings = retriever.embed_documents(documents)
+        embeddings, = retriever.embed_documents(documents)
         self._validate_embeddings_shape(
             embeddings=embeddings, num_documents=len(documents), embedding_dim=self.embedding_dim
         )
