@@ -409,15 +409,17 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
                     elif len(embedding.shape) == 2:
                         _doc[self.embedding_field] = embedding[0].tolist()
                         for idx, emb in enumerate(embedding[1:]):
-                            documents_to_index.append({
-                                "_op_type": "index" if duplicate_documents == "overwrite" else "create",
-                                "_index": index,
-                                "_id": f"{_doc['_id']}_emb_{idx+1}",
-                                self.name_field: _doc[self.name_field],
-                                self.embedding_field: emb.tolist(),
-                                "_parent": _doc['_id'],
-                                "_embedding_doc": True,
-                            })
+                            documents_to_index.append(
+                                {
+                                    "_op_type": "index" if duplicate_documents == "overwrite" else "create",
+                                    "_index": index,
+                                    "_id": f"{_doc['_id']}_emb_{idx+1}",
+                                    self.name_field: _doc[self.name_field],
+                                    self.embedding_field: emb.tolist(),
+                                    "_parent": _doc["_id"],
+                                    "_embedding_doc": True,
+                                }
+                            )
                     else:
                         raise ValueError(
                             f"Embedding dimension of {embedding.shape} is not supported. "
@@ -1251,24 +1253,21 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
                         for idx, emb_i in enumerate(emb[1:]):
                             # empty ones are just paddings from colbert
                             if emb_i.any():
-                                doc_updates.append({
-                                    "_op_type": "index",
-                                    "_index": index,
-                                    "_id": f"{doc.id}_emb_{idx+1}",
-                                    self.name_field: doc.meta[self.name_field],
-                                    self.embedding_field: emb_i.tolist(),
-                                    "_parent": doc.id,
-                                    "_embedding_doc": True
-                                })
+                                doc_updates.append(
+                                    {
+                                        "_op_type": "index",
+                                        "_index": index,
+                                        "_id": f"{doc.id}_emb_{idx+1}",
+                                        self.name_field: doc.meta[self.name_field],
+                                        self.embedding_field: emb_i.tolist(),
+                                        "_parent": doc.id,
+                                        "_embedding_doc": True,
+                                    }
+                                )
                     else:
                         raise ValueError(f"Embedding has unexpected shape {emb.shape}")
 
-                    update = {
-                        "_op_type": "update",
-                        "_index": index,
-                        "_id": doc.id,
-                        "doc": doc_update,
-                    }
+                    update = {"_op_type": "update", "_index": index, "_id": doc.id, "doc": doc_update}
                     doc_updates.append(update)
 
                 self._bulk(documents=doc_updates, request_timeout=300, refresh=self.refresh_type, headers=headers)
@@ -1281,7 +1280,7 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
         :param retriever: Retriever to use for embedding.
         :return: embeddings of documents.
         """
-        embeddings, = retriever.embed_documents(documents)
+        (embeddings,) = retriever.embed_documents(documents)
         self._validate_embeddings_shape(
             embeddings=embeddings, num_documents=len(documents), embedding_dim=self.embedding_dim
         )

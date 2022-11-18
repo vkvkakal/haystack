@@ -326,7 +326,6 @@ class BaseDocumentStore(BaseComponent):
         else:
             raise ValueError("Embedding array must be 1D, 2D or 3D")
 
-
     @staticmethod
     @njit  # (fastmath=True)
     def _normalize_embedding_1D(emb: np.ndarray) -> None:

@@ -439,7 +439,11 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
         if not self.embedding_field:
             raise DocumentStoreError("Please set a valid `embedding_field` for OpenSearchDocumentStore")
         body = self._construct_dense_query_body(
-            query_emb=query_emb, filters=filters, top_k=top_k, return_embedding=return_embedding, collapse_by_name_field=collapse_by_name_field
+            query_emb=query_emb,
+            filters=filters,
+            top_k=top_k,
+            return_embedding=return_embedding,
+            collapse_by_name_field=collapse_by_name_field,
         )
 
         logger.debug("Retriever query: %s", body)
@@ -606,7 +610,11 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
         body = []
         for query_emb, cur_filters in zip(query_embs, filters):
             cur_query_body = self._construct_dense_query_body(
-                query_emb=query_emb, filters=cur_filters, top_k=top_k, return_embedding=return_embedding, collapse_by_name_field=collapse_by_name_field
+                query_emb=query_emb,
+                filters=cur_filters,
+                top_k=top_k,
+                return_embedding=return_embedding,
+                collapse_by_name_field=collapse_by_name_field,
             )
             body.append(headers)
             body.append(cur_query_body)
@@ -616,8 +624,18 @@ class OpenSearchDocumentStore(SearchEngineDocumentStore):
 
         name_to_hit = {}
         if collapse_by_name_field:
-            names = [doc["_source"][self.name_field] for response in responses["responses"] for doc in response["hits"]["hits"]]
-            hits = list(self._get_all_documents_in_index(filters={self.name_field: names, "_embedding_doc": {"$not": {"$eq": True}}}, index=index, headers=headers))
+            names = [
+                doc["_source"][self.name_field]
+                for response in responses["responses"]
+                for doc in response["hits"]["hits"]
+            ]
+            hits = list(
+                self._get_all_documents_in_index(
+                    filters={self.name_field: names, "_embedding_doc": {"$not": {"$eq": True}}},
+                    index=index,
+                    headers=headers,
+                )
+            )
             for hit in hits:
                 del hit["_score"]
             name_to_hit = {hit["_source"][self.name_field]: hit for hit in hits}

@@ -1674,7 +1674,13 @@ class EmbeddingRetriever(DenseRetriever):
             )
         if len(query_emb.shape) == 2:
             documents = document_store.query_by_embedding_batch(  # type: ignore
-                query_embs=query_emb, filters=filters, top_k=top_k, index=index, headers=headers, scale_score=scale_score, collapse_by_name_field=True
+                query_embs=query_emb,
+                filters=filters,
+                top_k=top_k,
+                index=index,
+                headers=headers,
+                scale_score=scale_score,
+                collapse_by_name_field=True,
             )
             all_docs = [doc for docs in documents for doc in docs]
             id_to_doc = {doc.id: doc for doc in all_docs}
