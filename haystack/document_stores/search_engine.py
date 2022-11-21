@@ -416,7 +416,6 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
                                     "_id": f"{_doc['_id']}_emb_{idx+1}",
                                     self.name_field: _doc[self.name_field],
                                     self.embedding_field: emb.tolist(),
-                                    "_parent": _doc["_id"],
                                     "_embedding_doc": True,
                                 }
                             )
@@ -1260,7 +1259,6 @@ class SearchEngineDocumentStore(KeywordDocumentStore):
                                         "_id": f"{doc.id}_emb_{idx+1}",
                                         self.name_field: doc.meta[self.name_field],
                                         self.embedding_field: emb_i.tolist(),
-                                        "_parent": doc.id,
                                         "_embedding_doc": True,
                                     }
                                 )
