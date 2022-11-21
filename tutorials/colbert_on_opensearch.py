@@ -105,13 +105,14 @@ from haystack.nodes import FARMReader, TransformersReader
 #     index="plaid_index_discrepancy",
 # )
 from haystack.document_stores.opensearch import OpenSearchDocumentStore
+
 document_store = OpenSearchDocumentStore(
-    index="colbert_validation", 
-    embedding_dim=128, 
-    refresh_type="false", 
+    index="colbert_validation",
+    embedding_dim=128,
+    refresh_type="false",
     timeout=1800,
     # recreate_index=True,
-    )
+)
 
 # %%
 # document_store.delete_index("document")
