@@ -31,7 +31,8 @@ dependencies = [
     "gunicorn<21",
     "python-multipart<1",  # optional FastAPI dependency for form data
     "pynvml",
-    "psutil"
+    "psutil",
+    "httpx"
 ]
 dynamic = ["version"]
 
