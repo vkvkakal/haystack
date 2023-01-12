@@ -175,10 +175,11 @@ jobs:
     runs-on: ${{ matrix.os }}
     services:
       elasticsearch:
-        image: elasticsearch:7.17.6
+        image: elasticsearch:8.6.0
         env:
           discovery.type: "single-node"
           ES_JAVA_OPTS: "-Xms128m -Xmx256m"
+          ELASTIC_CLIENT_APIVERSIONING: 1
         ports:
           - 9200:9200
     steps:
@@ -616,7 +617,7 @@ jobs:
 
     - name: Run Elasticsearch
       run: |
-        docker run -d -p 9200:9200 -e "discovery.type=single-node" -e "ES_JAVA_OPTS=-Xms128m -Xmx256m" elasticsearch:7.9.2
+        docker run -d -p 9200:9200 -e "discovery.type=single-node" -e "ES_JAVA_OPTS=-Xms128m -Xmx256m" -e "ELASTIC_CLIENT_APIVERSIONING=1" elasticsearch:8.6.0
 
     - name: Run Opensearch
       run: |
@@ -699,7 +700,7 @@ jobs:
         choco install --no-progress tesseract
         choco install --no-progress openjdk --version=11.0.2.01
         refreshenv
-        choco install --no-progress elasticsearch --version=7.9.2
+        choco install --no-progress elasticsearch --version=8.6.0
         refreshenv
         Get-Service elasticsearch-service-x64 | Start-Service
 
