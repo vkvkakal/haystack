@@ -704,6 +704,7 @@ jobs:
         choco install --no-progress elasticsearch --version=8.6.0
         refreshenv
         Get-Service elasticsearch-service-x64 | Start-Service
+        (Get-Service elasticsearch-service-x64).WaitForStatus('Running','00:00:30')
 
     - name: Setup Python
       uses: ./.github/actions/python_cache/
