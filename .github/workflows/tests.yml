@@ -677,8 +677,8 @@ jobs:
       if: failure() && github.repository_owner == 'deepset-ai' && github.ref == 'refs/heads/main'
 
   integration-tests-windows:
-    # needs:
-    #  - unit-tests-windows
+    needs:
+     - unit-tests-windows
     runs-on: windows-latest
     if: contains(github.event.pull_request.labels.*.name, 'topic:windows') || !github.event.pull_request.draft
 
@@ -700,7 +700,7 @@ jobs:
         choco install --no-progress xpdf-utils
         choco install --no-progress tesseract
 
-    - name: Install Elasticsearcg
+    - name: Install Elasticsearch
       uses: ankane/setup-elasticsearch@v1
       env:
         ES_JAVA_OPTS: "-Xms128m -Xmx256m"
