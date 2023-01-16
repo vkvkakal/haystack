@@ -40,6 +40,7 @@ def test_rag_token_generator(rag_generator, docs_with_true_emb):
     assert "berlin" in answers[0].answer
 
 
+@pytest.mark.skipif(sys.platform in ["win32", "cygwin"], reason="Causes OOM on windows github runner")
 @pytest.mark.integration
 @pytest.mark.generator
 @pytest.mark.parametrize("document_store", ["memory"], indirect=True)
@@ -76,6 +77,7 @@ def test_lfqa_pipeline(document_store, retriever, lfqa_generator, docs_with_true
     assert "Germany" in answers[0].answer, answers[0].answer
 
 
+@pytest.mark.skipif(sys.platform in ["win32", "cygwin"], reason="Causes OOM on windows github runner")
 @pytest.mark.integration
 @pytest.mark.generator
 @pytest.mark.parametrize("document_store", ["memory"], indirect=True)
