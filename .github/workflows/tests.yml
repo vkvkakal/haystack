@@ -616,9 +616,12 @@ jobs:
       run: |
          python -c "from transformers import AutoModel;[AutoModel.from_pretrained(model_name) for model_name in ['vblagoje/bart_lfqa','yjernite/bart_eli5', 'vblagoje/dpr-ctx_encoder-single-lfqa-wiki', 'vblagoje/dpr-question_encoder-single-lfqa-wiki', 'facebook/dpr-question_encoder-single-nq-base', 'facebook/dpr-ctx_encoder-single-nq-base', 'elastic/distilbert-base-cased-finetuned-conll03-english', 'deepset/bert-medium-squad2-distilled']]"
 
-    - name: Run Elasticsearch
-      run: |
-        docker run -d -p 9200:9200 -e "discovery.type=single-node" -e "ES_JAVA_OPTS=-Xms128m -Xmx512m" -e "ELASTIC_CLIENT_APIVERSIONING=1" -e "xpack.security.enabled=false" elasticsearch:8.6.0
+    - name: Install Elasticsearch
+      uses: ankane/setup-elasticsearch@v1
+      env:
+        ELASTIC_CLIENT_APIVERSIONING: 1
+      with:
+        elasticsearch-version: 8
 
     - name: Run Opensearch
       run: |
@@ -703,7 +706,6 @@ jobs:
     - name: Install Elasticsearch
       uses: ankane/setup-elasticsearch@v1
       env:
-        ES_JAVA_OPTS: "-Xms128m -Xmx256m"
         ELASTIC_CLIENT_APIVERSIONING: 1
       with:
         elasticsearch-version: 8
