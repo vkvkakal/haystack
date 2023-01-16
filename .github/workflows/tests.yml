@@ -618,7 +618,7 @@ jobs:
 
     - name: Run Elasticsearch
       run: |
-        docker run -d -p 9200:9200 -e "discovery.type=single-node" -e "ES_JAVA_OPTS=-Xms128m -Xmx256m" -e "ELASTIC_CLIENT_APIVERSIONING=1" -e "xpack.security.enabled=false" elasticsearch:8.6.0
+        docker run -d -p 9200:9200 -e "discovery.type=single-node" -e "ES_JAVA_OPTS=-Xms128m -Xmx512m" -e "ELASTIC_CLIENT_APIVERSIONING=1" -e "xpack.security.enabled=false" elasticsearch:8.6.0
 
     - name: Run Opensearch
       run: |
