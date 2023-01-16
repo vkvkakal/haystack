@@ -29,6 +29,7 @@ def test_generator_pipeline_with_translator(
     assert "berlin" in answers[0].answer
 
 
+@pytest.mark.skipif(sys.platform in ["win32", "cygwin"], reason="Causes OOM on windows github runner")
 @pytest.mark.integration
 @pytest.mark.generator
 def test_rag_token_generator(rag_generator, docs_with_true_emb):
