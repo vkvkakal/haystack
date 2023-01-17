@@ -616,10 +616,11 @@ jobs:
       run: |
          python -c "from transformers import AutoModel;[AutoModel.from_pretrained(model_name) for model_name in ['vblagoje/bart_lfqa','yjernite/bart_eli5', 'vblagoje/dpr-ctx_encoder-single-lfqa-wiki', 'vblagoje/dpr-question_encoder-single-lfqa-wiki', 'facebook/dpr-question_encoder-single-nq-base', 'facebook/dpr-ctx_encoder-single-nq-base', 'elastic/distilbert-base-cased-finetuned-conll03-english', 'deepset/bert-medium-squad2-distilled']]"
 
-    - name: Install Elasticsearch
+    - name: Run Elasticsearch
       uses: ankane/setup-elasticsearch@v1
       env:
         ELASTIC_CLIENT_APIVERSIONING: 1
+        ES_JAVA_OPTS: "-Xms128m -Xmx256m"
       with:
         elasticsearch-version: 8
 
@@ -703,10 +704,11 @@ jobs:
         choco install --no-progress xpdf-utils
         choco install --no-progress tesseract
 
-    - name: Install Elasticsearch
+    - name: Run Elasticsearch
       uses: ankane/setup-elasticsearch@v1
       env:
         ELASTIC_CLIENT_APIVERSIONING: 1
+        ES_JAVA_OPTS: "-Xms128m -Xmx256m"
       with:
         elasticsearch-version: 8
 
