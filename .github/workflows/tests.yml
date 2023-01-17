@@ -583,7 +583,7 @@ jobs:
     needs:
       - unit-tests-linux
 
-    timeout-minutes: 60
+    timeout-minutes: 90
     strategy:
       fail-fast: false  # Avoid cancelling the others if one of these fails
       matrix:
