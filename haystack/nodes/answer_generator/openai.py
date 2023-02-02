@@ -96,6 +96,9 @@ class OpenAIAnswerGenerator(BaseGenerator):
                                    "Please answer the question according to the above context."
         """
         super().__init__(progress_bar=progress_bar)
+        if (examples is None and examples_context is not None) or (examples is not None and examples_context is None):
+            logger.warning("If providing examples or a examples_context, we recommend providing both of them "
+                           "so the examples correctly refer to the examples_context.")
         if examples_context is None:
             examples_context = "In 2017, U.S. life expectancy was 78.6 years."
         if examples is None:
