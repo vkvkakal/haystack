@@ -262,8 +262,6 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
         includes: trust_remote_code, revision, feature_extractor, tokenizer, config, use_fast, torch_dtype, device_map.
         For more details about these kwargs, see
         Hugging Face [documentation](https://huggingface.co/docs/transformers/en/main_classes/pipelines#transformers.pipeline).
-
-
         """
         super().__init__(model_name_or_path, max_length)
         self.use_auth_token = use_auth_token
@@ -330,8 +328,8 @@ class HFLocalInvocationLayer(PromptModelInvocationLayer):
         It takes a prompt and returns a list of generated text using the local Hugging Face transformers model
         :return: A list of generated text.
 
-        Note: Only kwargs relevant to Text2TextGenerationPipeline are passed to Hugging Face as model_input_kwargs.
-        Other kwargs are ignored.
+        Note: Only kwargs relevant to Text2TextGenerationPipeline are passed to Hugging Face transformers as
+        `model_input_kwargs`. Other kwargs are ignored.
         """
         output: List[Dict[str, str]] = []
         stop_words = kwargs.pop("stop_words", None)
@@ -397,7 +395,6 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
         kwargs includes: suffix, temperature, top_p, presence_penalty, frequency_penalty, best_of, n, max_tokens,
         logit_bias, stop, echo, and logprobs. For more details about these kwargs, see OpenAI
         [documentation](https://beta.openai.com/docs/api-reference/completions/create).
-
         """
         super().__init__(model_name_or_path, max_length)
         if not isinstance(api_key, str) or len(api_key) == 0:
@@ -445,7 +442,7 @@ class OpenAIInvocationLayer(PromptModelInvocationLayer):
         prompt = kwargs.get("prompt")
         if not prompt:
             raise ValueError(
-                f"No prompt provided. Model {self.model_name_or_path} requires prompt."
+                f"No prompt provided. Model {self.model_name_or_path} requires a prompt."
                 f"Make sure to provide prompt in kwargs."
             )
 
@@ -682,7 +679,6 @@ class PromptNode(BaseComponent):
     LLM does not "follow" prompt instructions well. This is why we recommend using T5 flan or OpenAI InstructGPT models.
 
     For more details, see the PromptNode [documentation](https://docs.haystack.deepset.ai/docs/prompt_node).
-
     """
 
     outgoing_edges: int = 1
