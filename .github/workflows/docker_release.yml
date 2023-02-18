@@ -12,8 +12,67 @@ env:
   DOCKER_REPO_NAME: deepset/haystack
 
 jobs:
+  build-xpdf:
+    runs-on: ubuntu-latest
+    env:
+      XPDF_VERSION: "4.04"
+    strategy:
+      matrix:
+        platform:
+          - "linux/amd64"
+          - "linux/arm64"
+    container:
+      image: alpine:latest
+      options: --platform ${{ matrix.platform }}
+
+    steps:
+      - name: Check if build is necessary
+        id: build-check
+        env:
+          URL: https://core-engineering.s3.eu-central-1.amazonaws.com/public/binaries/${{ matrix.platform }}/pdftotext
+        run: |
+          curl --fail --silent --head "$URL"
+          (test $? -eq 0 && echo "exists=true" ||  echo "exists=false") >> "$GITHUB_OUTPUT"
+
+      - name: Install toolchain and deps
+        if: ${{ steps.build-check.outputs.exists == 'false' }}
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends \
+          build-essential \
+          cmake \
+          curl \
+          gcc \
+          git \
+          libtesseract-dev \
+          poppler-utils \
+          tesseract-ocr
+
+      - name: Get Xpdf sources
+        if: ${{ steps.build-check.outputs.exists == 'false' }}
+        run: |
+          curl -O "https://dl.xpdfreader.com/xpdf-$XPDF_VERSION.tar.gz"
+          tar -xvf "xpdf-$XPDF_VERSION.tar.gz"
+
+      - name: Build Xpdf
+        if: ${{ steps.build-check.outputs.exists == 'false' }}
+        run: |
+          cd "xpdf-$XPDF_VERSION"
+          cmake .
+          make
+
+      - name: Upload to S3
+        if: ${{ steps.build-check.outputs.exists == 'false' }}
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_CI_ACCESS_KEY }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_CI_SECRET_ACCESS_KEY }}
+          AWS_S3_BUCKET: s3://core-engineering/public/binaries/${{ matrix.platform }}/
+        run: |
+          aws s3 cp "xpdf-$XPDF_VERSION/xpdf/pdftotext" "$AWS_S3_BUCKET"
+
   build-and-push:
     runs-on: ubuntu-latest
+    needs: build-xpdf
 
     steps:
       - name: Checkout
