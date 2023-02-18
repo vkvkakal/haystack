@@ -26,6 +26,12 @@ jobs:
       options: --platform ${{ matrix.platform }}
 
     steps:
+      - name: Install curl
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends \
+          curl
+
       - name: Check if build is necessary
         id: build-check
         env:
@@ -37,7 +43,6 @@ jobs:
       - name: Install toolchain and deps
         if: ${{ steps.build-check.outputs.exists == 'false' }}
         run: |
-          apt-get update
           apt-get install -y --no-install-recommends \
           build-essential \
           cmake \
