@@ -22,7 +22,7 @@ jobs:
           - "linux/amd64"
           - "linux/arm64"
     container:
-      image: alpine:latest
+      image: ubuntu:latest
       options: --platform ${{ matrix.platform }}
 
     steps:
