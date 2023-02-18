@@ -73,7 +73,12 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_CI_SECRET_ACCESS_KEY }}
           AWS_S3_BUCKET: s3://core-engineering/public/binaries/${{ matrix.platform }}/
         run: |
-          aws s3 cp "xpdf-$XPDF_VERSION/xpdf/pdftotext" "$AWS_S3_BUCKET"
+          docker run --rm -it \
+          -e XPDF_VERSION \
+          -e AWS_ACCESS_KEY_ID \
+          -e AWS_SECRET_ACCESS_KEY \
+          -e AWS_S3_BUCKET \
+          s3 cp "xpdf-$XPDF_VERSION/xpdf/pdftotext" "$AWS_S3_BUCKET"
 
   build-and-push:
     runs-on: ubuntu-latest
