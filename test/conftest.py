@@ -535,21 +535,6 @@ def rag_generator():
 
 
 @pytest.fixture
-def openai_generator():
-    azure_conf = haystack_azure_conf()
-    if azure_conf:
-        return OpenAIAnswerGenerator(
-            api_key=azure_conf["api_key"],
-            azure_base_url=azure_conf["azure_base_url"],
-            azure_deployment_name=azure_conf["azure_deployment_name"],
-            model="text-babbage-001",
-            top_k=1,
-        )
-    else:
-        return OpenAIAnswerGenerator(api_key=os.environ.get("OPENAI_API_KEY", ""), model="text-babbage-001", top_k=1)
-
-
-@pytest.fixture
 def question_generator():
     return QuestionGenerator(model_name_or_path="valhalla/t5-small-e2e-qg")
 
